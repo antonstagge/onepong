@@ -69,9 +69,6 @@ class State(object):
             or new_pos[0] < 0) and new_pos[0] < ROWS-1)
 
     def _move_ball_bounce(self, pad=False):
-        print("bounce move")
-        if pad:
-            print("bounce PAD!!")
         new_pos = self._get_new_pos()
         first_new_pos = new_pos
 

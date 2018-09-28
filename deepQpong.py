@@ -4,7 +4,7 @@ import sys
 import numpy as np
 from onepong import *
 
-FPS = 5
+FPS = 10
 # colors
 BACKGROUND_COLOR = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -64,9 +64,10 @@ def play(times, player, draw=False):
     pygame.quit()
 
 def draw_and_play(s, screen, clock, font):
+    moved = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            print("abort")
+            print("end game")
             return True
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_q:
@@ -74,8 +75,17 @@ def draw_and_play(s, screen, clock, font):
                 return True
             if event.key == pygame.K_LEFT:
                 s.move_pad(Movement.PAD_L)
-            if event.key == pygame.K_RIGHT:
+                moved = True
+            elif event.key == pygame.K_RIGHT:
                 s.move_pad(Movement.PAD_R)
+                moved = True
+
+    if not moved:
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            s.move_pad(Movement.PAD_L)
+        elif keys[pygame.K_RIGHT]:
+            s.move_pad(Movement.PAD_R)
 
     actual_draw(s, screen, clock, font)
 
@@ -107,12 +117,12 @@ def actual_draw(s, screen, clock, font):
 def draw_only(s, screen, clock, font):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            print("abort")
+            print("end game")
             return True
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_q:
-                print("abort")
-                return True
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_q]:
+        print("end game")
+        return True
 
     actual_draw(s, screen, clock, font)
 
