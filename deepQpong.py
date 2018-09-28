@@ -76,7 +76,7 @@ def draw_and_play(s, screen, clock, font):
                 s.move_pad(Movement.PAD_L)
             if event.key == pygame.K_RIGHT:
                 s.move_pad(Movement.PAD_R)
-            #break
+
     actual_draw(s, screen, clock, font)
 
 def actual_draw(s, screen, clock, font):

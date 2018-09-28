@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 import pygame
-import sys
+
 import numpy as np
-from enum import Enum
-import time
+
 
 # CONSTANTS
 
@@ -20,7 +19,7 @@ class State(object):
     def __init__(self, r, c):
         self._state = np.zeros((r, c), dtype=int)
         self._position = (int(r/2),int(c/2))
-        self._direction = Movement.d_45
+        self._direction = Movement.d_270
         self._state[self._position[0]][self._position[1]] = BALL
         self._pad = round(COLUMNS/2 - PAD_SIZE/2)
         for i in range(0, PAD_SIZE):
@@ -35,7 +34,7 @@ class State(object):
             self._move_ball_bounce()
             return False
         elif self._is_pad_bounce():
-            self._move_ball_pad_bounce()
+            self._move_ball_bounce(True)
             self.points += 1
         else:
             # Crash return done is true
@@ -60,21 +59,8 @@ class State(object):
 
     # True if ball is about to bounce on PAD
     def _is_pad_bounce(self):
-        row_idx = self._position[0] + 1
-        if row_idx == ROWS-1:
-            for i in range(0, 5):
-                col_idx = self._position[1] + i - 2
-                if col_idx >= 0 and col_idx < COLUMNS:
-                    if self._state[row_idx][col_idx] == PAD:
-                        return True
-        row_idx += 1
-        if row_idx == ROWS-1:
-            for i in range(0, 5):
-                col_idx = self._position[1] + i - 2
-                if col_idx >= 0 and col_idx < COLUMNS:
-                    if self._state[row_idx][col_idx] == PAD:
-                        return True
-        return False
+        new_pos = self._get_new_pos()
+        return self._state[ROWS-1][new_pos[1]] == PAD
 
     # Returns the type of bounce move
     def _is_bounce_move(self):
@@ -82,43 +68,63 @@ class State(object):
         return ((new_pos[1] >= COLUMNS or new_pos[1] < 0
             or new_pos[0] < 0) and new_pos[0] < ROWS-1)
 
-    def _move_ball_bounce(self):
+    def _move_ball_bounce(self, pad=False):
         print("bounce move")
+        if pad:
+            print("bounce PAD!!")
         new_pos = self._get_new_pos()
-        # Swap direction
-        if (new_pos[1] < 0 or new_pos[1] >= COLUMNS):
-            # hit sides
-            print("direction hit side")
-            self._direction = (self._direction[0], -1*self._direction[1])
-        if (new_pos[0] < 0 or new_pos[0] > ROWS-1):
-            print("direction hit roof or btn")
+        first_new_pos = new_pos
+
+        # change direction
+        if new_pos[1] < 0 or new_pos[1] > COLUMNS-1:
+            self._direction = (self._direction[0],-1*self._direction[1])
+        if new_pos[0] < 0:
             self._direction = (-1*self._direction[0],self._direction[1])
 
-        print("pos before")
-        print(self._position)
-        print(new_pos)
-        if new_pos[0] == -2:
-            # hit roof
-            new_pos = (1, new_pos[1])
-            print("hit roof")
-            print(new_pos)
-        else:
-            new_pos = (self._position[0], new_pos[1])
+        if pad and new_pos[0] > ROWS-2:
+            dist = self._position[1] - self._pad
+            if dist == 0 or dist == 1:
+                self._direction = Movement.d_150
+            elif dist == 2:
+                self._direction = Movement.d_135
+            elif dist == 3:
+                self._direction = Movement.d_120
+            elif dist == 4:
+                self._direction = Movement.d_60
+            elif dist == 5:
+                self._direction = Movement.d_45
+            elif dist == 6 or dist == 7:
+                self._direction = Movement.d_30
 
-        if new_pos[1] == -2:
-            # hit left side
+        if self._position[1] == 1:
+            # print("left away")
             new_pos = (new_pos[0], 1)
-            print("hit left")
-            print(new_pos)
-        elif new_pos[1] == COLUMNS +1:
+        elif self._position[1] == 0:
+            # print("left now")
+            new_pos = (new_pos[0], 2)
+        elif self._position[1] == COLUMNS-2:
+            # print("right away")
+            new_pos = (new_pos[0], COLUMNS-2)
+        elif self._position[1] == COLUMNS-1:
+            # print("right now")
             new_pos = (new_pos[0], COLUMNS-3)
-            print("hit right")
-            print(new_pos)
-        else:
-            new_pos = (new_pos[0], self._position[1])
 
-        print("done")
-        print(new_pos)
+        if self._position[0] == 1:
+            # print("roof away")
+            new_pos = (1, new_pos[1])
+        elif self._position[0] == 0:
+            # print("roof now")
+            new_pos = (2, new_pos[1])
+        elif self._position[0] == ROWS-3:
+            # print("btn away")
+            new_pos = (ROWS-3, new_pos[1])
+        elif self._position[0] == ROWS-2:
+            # print("btn now")
+            new_pos = (ROWS-4, new_pos[1])
+
+        if pad:
+            new_pos = (ROWS-2, first_new_pos[1])
+        # move to new_pos
         self._state[self._position[0]][self._position[1]] = EMPTY
         self._state[new_pos[0]][new_pos[1]] = BALL
         self._position = new_pos
