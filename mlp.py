@@ -31,8 +31,14 @@ class mlp:
             self.weights1 = (random.rand(self.nin+1,self.nhidden)-0.5)*2/sqrt(self.nin)
             self.weights2 = (random.rand(self.nhidden+1,self.nout)-0.5)*2/sqrt(self.nhidden)
 
-    def mlptrain(self,inputs,targets,eta,niterations):
+        print("Neural net set up with:")
+        print("Input vector of size %d" % self.nin)
+        print("Output vector of size %d" % self.nout)
+        print("Hidden layer of size %d" % self.nhidden)
+
+    def mlptrain(self,inputs, targets,eta,niterations):
         """ Train the thing """
+        self.ndata = shape(inputs)[0]
         # Add the inputs that match the bias node
         inputs = concatenate((inputs,-ones((self.ndata,1))),axis=1)
         change = list(range(self.ndata))
@@ -43,8 +49,7 @@ class mlp:
         for n in range(niterations):
             self.outputs = self.mlpfwd(inputs)
 
-            #deltao = (targets-self.outputs)/self.ndata
-            deltao = ()
+            deltao = (targets-self.outputs)/self.ndata
 
             deltah = self.hidden*(1.0-self.hidden)*(dot(deltao,transpose(self.weights2)))
 
@@ -87,12 +92,12 @@ class mlp:
         return transpose(transpose(exp(outputs))/normalisers)
 
     def saveWeights(self):
-        save('weights1.npy', self.weights1)
-        save('weights2.npy', self.weights2)
+        save('weights1_1.1.npy', self.weights1)
+        save('weights2_1.1.npy', self.weights2)
 
     def loadWeights(self):
-        self.weights1 = load('weights1.npy')
-        self.weights2 = load('weights2.npy')
+        self.weights1 = load('weights1_1.1.npy')
+        self.weights2 = load('weights2_1.1.npy')
 
 # # Example how to use it!
 # inputs = array(
@@ -106,7 +111,7 @@ class mlp:
 #     [1, 0]
 #     ])
 #
-# p = mlp(inputs, targets, 10, loadW = True)
+# p = mlp(inputs, targets, 10, loadW = False)
 # p.mlptrain(inputs, targets, 0.01, 100)
 # print(p.predict(inputs[0]))
 # p.saveWeights()

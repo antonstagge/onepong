@@ -3,20 +3,9 @@ import pygame
 import sys
 import numpy as np
 from onepong import *
+import mlp
 
-FPS = 10
-# colors
-BACKGROUND_COLOR = (0, 0, 0)
-WHITE = (255, 255, 255)
-BALL_COLOR = (0, 0, 255)
-RAD_COLOR = (255, 0, 0)
 
-# This sets the WIDTH and HEIGHT of each state "pixel"
-WIDTH = 10
-HEIGHT = 10
-MARGIN = 1
-# Set the HEIGHT and WIDTH of the screen
-WINDOW_SIZE = [COLUMNS*(WIDTH+MARGIN) +MARGIN, ROWS*(HEIGHT + MARGIN) + MARGIN]
 
 def main():
     player = True
@@ -28,105 +17,123 @@ def main():
         if "-d" in sys.argv:
             draw = True
 
-    play(1, player, draw)
+    if player:
+        return normal_play()
 
 
-def play(times, player, draw=False):
-    for t in range(0, times):
-        # Initialize board
-        state = State(ROWS, COLUMNS)
+    for train in range(0, 3000):
 
-        # Initialize pygame
-        if draw:
-            pygame.init()
-            pygame.font.init() # you have to call this at the start,
-                               # if you want to use this module.
-            small_id_font = pygame.font.SysFont(pygame.font.get_default_font(), 30)
-            screen = pygame.display.set_mode(WINDOW_SIZE)
-            # Used to manage how fast the screen updates
-            clock = pygame.time.Clock()
+        set_up_input = np.array([np.zeros(ROWS*COLUMNS)])
+        set_up_target = np.array([[1,0,0]])
 
-        # loop condition
-        done = False
+        neural_net = mlp.mlp(set_up_input, set_up_target, 200, False, beta=0.02)
 
-        # -------- Main Program Loop -----------
-        while not done:
-            done_draw = False
-            if draw and player:
-                done_draw = draw_and_play(state, screen, clock, small_id_font)
-            elif draw:
-                done_draw = draw_only(state, screen, clock, small_id_font)
+        observations = []
+        actions = []
+        predictions = []
+        rewards = []
 
-            done_play = state.run()
-            done = done_draw or done_play
+        for t in range(0, 30):
+            # Initialize game
+            pong = PlayPong(player, draw)
 
-        print("SCORE: ", state.points)
-    pygame.quit()
+            done = False
+            last_frame = np.copy(pong.state._state)
+            scn_last_frame = None
+            last_points = 0
+            while not done:
+                if last_frame is not None and scn_last_frame is not None:
+                    obs = (last_frame-scn_last_frame).flatten()
+                    observations.append(obs)
+                    pred = neural_net.predict(obs)
+                    predictions.append(pred)
+                    action = get_action_from_prediction(pred)
+                    actions.append(action)
+                    done = pong.play_one_pong(get_movement_from_action(action))
 
-def draw_and_play(s, screen, clock, font):
-    moved = False
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            print("end game")
-            return True
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_q:
-                print("abort")
-                return True
-            if event.key == pygame.K_LEFT:
-                s.move_pad(Movement.PAD_L)
-                moved = True
-            elif event.key == pygame.K_RIGHT:
-                s.move_pad(Movement.PAD_R)
-                moved = True
+                    current_points = pong.state.points
+                    if current_points > last_points:
+                        rewards.append(1)
+                    elif done:
+                        rewards.append(-1)
+                    else:
+                        rewards.append(0)
 
-    if not moved:
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            s.move_pad(Movement.PAD_L)
-        elif keys[pygame.K_RIGHT]:
-            s.move_pad(Movement.PAD_R)
-
-    actual_draw(s, screen, clock, font)
-
-def actual_draw(s, screen, clock, font):
-    # Set the screen background
-    screen.fill(BACKGROUND_COLOR)
-    # Draw the state
-    for row in range(0,ROWS):
-        for column in range(0, COLUMNS):
-            color = WHITE
-            if s._state[row][column] == 1:
-                color = BALL_COLOR
-            elif s._state[row][column] == 2:
-                color = RAD_COLOR
-            pygame.draw.rect(screen,
-                             color,
-                             [(MARGIN + WIDTH) * column + MARGIN,
-                              (MARGIN + HEIGHT) * row + MARGIN,
-                              WIDTH,
-                              HEIGHT])
-
-    text_id = font.render(("Points: " + str(s.points)), False, (0, 0, 0))
-    screen.blit(text_id, (0, 0))
-    # Limit to 6 frames per second
-    clock.tick(FPS)
-    pygame.display.flip()
-    return False
-
-def draw_only(s, screen, clock, font):
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            print("end game")
-            return True
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_q]:
-        print("end game")
-        return True
-
-    actual_draw(s, screen, clock, font)
+                    scn_last_frame = last_frame
+                    last_frame = np.copy(pong.state._state)
+                    last_points = current_points
+                else:
+                    done = pong.play_one_pong()
+                    scn_last_frame = last_frame
+                    last_frame = np.copy(pong.state._state)
+                    last_points = pong.state.points
 
 
+        devalue_rewards(rewards)
+        normalize_reward(rewards)
+
+        targets = []
+        for i in range(0, len(observations)):
+            log = np.log(predictions[i])
+            inner = actions[i]*log
+            one_move = -rewards[i]*(inner)
+            targets.append(one_move)
+
+        targets = np.array(targets)
+        neural_net.mlptrain(observations, targets, 0.002, 10)
+
+        neural_net.saveWeights()
+        print("One training iteration done and saved! %d" % train)
+
+    print("%d training iterations done!" % train)
+
+
+def devalue_rewards(rewards):
+    val = 0
+    for i in range(0, len(rewards)):
+        idx = len(rewards)-1-i
+        if (not rewards[idx] == 0):
+            val = rewards[idx]/2
+        else:
+            rewards[idx] = val
+        val = val/2
+        if val < 0.00001:
+            val = 0.0
+
+def normalize_reward(rewards):
+    mean = np.mean(rewards)
+    std = np.std(rewards)
+    for i in range(0, len(rewards)):
+        rewards[i] = (rewards[i]-mean)/std
+
+
+def get_action_from_prediction(pred):
+    max = -999.0
+    idx = -1
+    for i in range(0, 3):
+        if pred[i] > max:
+            max = pred[i]
+            idx = i
+
+    temp = [0, 0, 0]
+    temp[idx] = 1
+    return temp
+
+def get_movement_from_action(action):
+    if action[0]:
+        return Movement.PAD_L
+    if action[1]:
+        return Movement.PAD_STILL
+    if action[2]:
+        return Movement.PAD_R
+
+
+def normal_play():
+    pong = PlayPong(True, True)
+    done = False
+    while not done:
+        done = pong.play_one_pong()
+    print(" GAME OVER!!\nYou got %d points" % pong.state.points)
 if __name__ == "__main__":
     main()
     # observation - move - prediction - reward

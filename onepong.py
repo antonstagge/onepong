@@ -15,10 +15,24 @@ EMPTY = 0
 PAD = 2
 BALL = 1
 
+FPS = 30
+# colors
+BACKGROUND_COLOR = (0, 0, 0)
+WHITE = (255, 255, 255)
+BALL_COLOR = (0, 0, 255)
+RAD_COLOR = (255, 0, 0)
+
+# This sets the WIDTH and HEIGHT of each state "pixel"
+WIDTH = 10
+HEIGHT = 10
+MARGIN = 1
+# Set the HEIGHT and WIDTH of the screen
+WINDOW_SIZE = [COLUMNS*(WIDTH+MARGIN) +MARGIN, ROWS*(HEIGHT + MARGIN) + MARGIN]
+
 class State(object):
-    def __init__(self, r, c):
-        self._state = np.zeros((r, c), dtype=int)
-        self._position = (int(r/2),int(c/2))
+    def __init__(self):
+        self._state = np.zeros((ROWS, COLUMNS), dtype=int)
+        self._position = (int(ROWS/2),int(COLUMNS/2))
         self._direction = Movement.d_270
         self._state[self._position[0]][self._position[1]] = BALL
         self._pad = round(COLUMNS/2 - PAD_SIZE/2)
@@ -169,3 +183,100 @@ class Movement():
     d_315 = (2, 2)
     PAD_L = (0 ,-1)
     PAD_R = (0, 1)
+    PAD_STILL = -1
+
+class PlayPong(object):
+    def __init__(self, player, draw):
+        self.player = player
+        self.draw = draw
+        self.done = False
+        self.state = State()
+        if draw:
+            pygame.init()
+            pygame.font.init() # you have to call this at the start,
+                               # if you want to use this module.
+            self.font = pygame.font.SysFont(pygame.font.get_default_font(), 30)
+            self.screen = pygame.display.set_mode(WINDOW_SIZE)
+            # Used to manage how fast the screen updates
+            self.clock = pygame.time.Clock()
+
+    def play_one_pong(self, action = None):
+        done_draw = False
+        if self.draw and self.player:
+            done_draw = draw_and_play(self.state, self.screen, self.clock, self.font)
+        elif self.draw:
+            done_draw = draw_only(self.state, self.screen, self.clock, self.font)
+
+        if action is not None and not self.player:
+            self.state.move_pad(action)
+
+        done_play = self.state.run()
+        self.done = done_draw or done_play
+
+        return self.done
+
+    def quit(self):
+        pygame.quit()
+
+def draw_and_play(s, screen, clock, font):
+    moved = False
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            print("end game")
+            return True
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                print("abort")
+                return True
+            if event.key == pygame.K_LEFT:
+                s.move_pad(Movement.PAD_L)
+                moved = True
+            elif event.key == pygame.K_RIGHT:
+                s.move_pad(Movement.PAD_R)
+                moved = True
+
+    if not moved:
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            s.move_pad(Movement.PAD_L)
+        elif keys[pygame.K_RIGHT]:
+            s.move_pad(Movement.PAD_R)
+
+    actual_draw(s, screen, clock, font)
+
+def actual_draw(s, screen, clock, font):
+    # Set the screen background
+    screen.fill(BACKGROUND_COLOR)
+    # Draw the state
+    for row in range(0,ROWS):
+        for column in range(0, COLUMNS):
+            color = WHITE
+            if s._state[row][column] == 1:
+                color = BALL_COLOR
+            elif s._state[row][column] == 2:
+                color = RAD_COLOR
+            pygame.draw.rect(screen,
+                             color,
+                             [(MARGIN + WIDTH) * column + MARGIN,
+                              (MARGIN + HEIGHT) * row + MARGIN,
+                              WIDTH,
+                              HEIGHT])
+
+    text_id = font.render(("Points: " + str(s.points)), False, (0, 0, 0))
+    screen.blit(text_id, (0, 0))
+    # Limit to 6 frames per second
+    clock.tick(FPS)
+    pygame.display.flip()
+    return False
+
+def draw_only(s, screen, clock, font):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            print("end game")
+            return True
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_q]:
+        print("end game")
+        return True
+
+    actual_draw(s, screen, clock, font)
