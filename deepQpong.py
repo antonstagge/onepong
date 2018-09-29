@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import datetime
 import pygame
 import sys
 import numpy as np
@@ -6,6 +7,16 @@ from onepong import *
 import mlp
 
 
+OUTER_ITER = 1
+NUMBER_OF_PLAYS = 1
+LOAD = False
+SAVE_NAME = "new_discount_factor"
+
+BETA = 1
+HIDDEN = 200
+TR_SPEED = 0.002
+
+DISCOUND_FACTOR = 0.95
 
 def main():
     player = True
@@ -21,19 +32,19 @@ def main():
         return normal_play()
 
 
-    for train in range(0, 3000):
+    for train in range(0, OUTER_ITER):
 
         set_up_input = np.array([np.zeros(ROWS*COLUMNS)])
-        set_up_target = np.array([[1,0,0]])
+        set_up_target = np.array([[0,0,0]])
 
-        neural_net = mlp.mlp(set_up_input, set_up_target, 200, False, beta=0.02)
+        neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, LOAD, beta=BETA, saveName = SAVE_NAME)
 
         observations = []
         actions = []
         predictions = []
         rewards = []
 
-        for t in range(0, 30):
+        for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
             pong = PlayPong(player, draw)
 
@@ -47,6 +58,7 @@ def main():
                     observations.append(obs)
                     pred = neural_net.predict(obs)
                     predictions.append(pred)
+                    print(pred)
                     action = get_action_from_prediction(pred)
                     actions.append(action)
                     done = pong.play_one_pong(get_movement_from_action(action))
@@ -80,7 +92,13 @@ def main():
             targets.append(one_move)
 
         targets = np.array(targets)
-        neural_net.mlptrain(observations, targets, 0.002, 10)
+
+        # Save current weight for training
+        w1 = neural_net.weights1
+        w2 = neural_net.weights2
+
+        print("this batch has size %d and starts at: %s" %(len(observations), str(datetime.datetime.now())))
+        neural_net.mlptrain(observations, targets, TR_SPEED, w1, w2)
 
         neural_net.saveWeights()
         print("One training iteration done and saved! %d" % train)
@@ -93,11 +111,11 @@ def devalue_rewards(rewards):
     for i in range(0, len(rewards)):
         idx = len(rewards)-1-i
         if (not rewards[idx] == 0):
-            val = rewards[idx]/2
+            val = rewards[idx]*DISCOUND_FACTOR
         else:
             rewards[idx] = val
-        val = val/2
-        if val < 0.00001:
+        val = val*DISCOUND_FACTOR
+        if abs(val) < 0.001:
             val = 0.0
 
 def normalize_reward(rewards):

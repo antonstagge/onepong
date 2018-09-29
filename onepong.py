@@ -15,7 +15,7 @@ EMPTY = 0
 PAD = 2
 BALL = 1
 
-FPS = 30
+FPS = 90
 # colors
 BACKGROUND_COLOR = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -33,7 +33,8 @@ class State(object):
     def __init__(self):
         self._state = np.zeros((ROWS, COLUMNS), dtype=int)
         self._position = (int(ROWS/2),int(COLUMNS/2))
-        self._direction = Movement.d_270
+        start_dir_v = [Movement.d_240, Movement.d_270, Movement.d_300]
+        self._direction = start_dir_v[np.random.randint(0,len(start_dir_v))]
         self._state[self._position[0]][self._position[1]] = BALL
         self._pad = round(COLUMNS/2 - PAD_SIZE/2)
         for i in range(0, PAD_SIZE):
