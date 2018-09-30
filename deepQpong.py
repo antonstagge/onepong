@@ -7,16 +7,19 @@ from onepong import *
 import mlp
 
 
-OUTER_ITER = 1
-NUMBER_OF_PLAYS = 1
-LOAD = False
-SAVE_NAME = "new_discount_factor"
+OUTER_ITER = 5
+NUMBER_OF_PLAYS = 20
+LOAD = True
+SAVE_NAME = "sigmoid"
 
 BETA = 1
 HIDDEN = 200
-TR_SPEED = 0.002
+TR_SPEED = 0.001
 
 DISCOUND_FACTOR = 0.95
+
+EPSILON_MIN = 0.01
+EPSILON_DECAY = 0.995
 
 def main():
     player = True
@@ -31,6 +34,8 @@ def main():
     if player:
         return normal_play()
 
+    np.seterr(divide='raise', over='raise', under='raise', invalid='raise')
+    total_amount = 0
 
     for train in range(0, OUTER_ITER):
 
@@ -39,10 +44,10 @@ def main():
 
         neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, LOAD, beta=BETA, saveName = SAVE_NAME)
 
-        observations = []
-        actions = []
-        predictions = []
-        rewards = []
+        observations = deque(maxlen=2000)
+        actions = deque(maxlen=2000)
+        predictions = deque(maxlen=2000)
+        rewards = deque(maxlen=2000)
 
         for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
@@ -57,8 +62,8 @@ def main():
                     obs = (last_frame-scn_last_frame).flatten()
                     observations.append(obs)
                     pred = neural_net.predict(obs)
+                    #print(pred)
                     predictions.append(pred)
-                    print(pred)
                     action = get_action_from_prediction(pred)
                     actions.append(action)
                     done = pong.play_one_pong(get_movement_from_action(action))
@@ -81,29 +86,32 @@ def main():
                     last_points = pong.state.points
 
 
-        devalue_rewards(rewards)
-        normalize_reward(rewards)
+        #devalue_rewards(rewards)
+        #normalize_reward(rewards)
+        #targets = calcTargets(observations, predictions, actions, rewards)
 
-        targets = []
-        for i in range(0, len(observations)):
-            log = np.log(predictions[i])
-            inner = actions[i]*log
-            one_move = -rewards[i]*(inner)
-            targets.append(one_move)
 
-        targets = np.array(targets)
+        # print(np.array(predictions))
+        # print(np.array(actions))
+        # print(np.array(rewards))
+        # print(targets)
+
 
         # Save current weight for training
-        w1 = neural_net.weights1
-        w2 = neural_net.weights2
+        w1 = np.copy(neural_net.weights1)
+        w2 = np.copy(neural_net.weights2)
 
-        print("this batch has size %d and starts at: %s" %(len(observations), str(datetime.datetime.now())))
         neural_net.mlptrain(observations, targets, TR_SPEED, w1, w2)
 
         neural_net.saveWeights()
+        current_amount = len(observations)
+        total_amount += current_amount
         print("One training iteration done and saved! %d" % train)
+        print("It had batch has size %d" % current_amount)
+        print("Completed at: %s" % str(datetime.datetime.now()))
 
     print("%d training iterations done!" % train)
+    print("Total amount of training data: %d" % total_amount)
 
 
 def devalue_rewards(rewards):
@@ -124,9 +132,22 @@ def normalize_reward(rewards):
     for i in range(0, len(rewards)):
         rewards[i] = (rewards[i]-mean)/std
 
+def calcTargets(observations, predictions, actions, rewards):
+    targets = []
+    for i in range(0, len(observations)):
+        for j in range(0, 3):
+            if predictions[i][j] <= 0.0:
+                predictions[i][j] == 0.0000000001
+        log = np.log(predictions[i])
+        inner = actions[i]*log
+        one_move = -rewards[i]*(inner)
+        targets.append(one_move)
+
+    return np.array(targets)
+
 
 def get_action_from_prediction(pred):
-    max = -999.0
+    max = -999
     idx = -1
     for i in range(0, 3):
         if pred[i] > max:
