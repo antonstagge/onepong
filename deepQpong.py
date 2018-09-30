@@ -5,21 +5,23 @@ import sys
 import numpy as np
 from onepong import *
 import mlp
+from collections import deque
+import random
 
+SAVE_NAME = "LESS_HIDDEN"
 
-OUTER_ITER = 5
+OUTER_ITER = 20
 NUMBER_OF_PLAYS = 20
-LOAD = True
-SAVE_NAME = "sigmoid"
 
 BETA = 1
-HIDDEN = 200
+HIDDEN = 75
 TR_SPEED = 0.001
-
 DISCOUND_FACTOR = 0.95
 
 EPSILON_MIN = 0.01
-EPSILON_DECAY = 0.995
+EPSILON_DECAY = 0.998
+
+BATCH_SIZE = 32
 
 def main():
     player = True
@@ -30,24 +32,32 @@ def main():
             draw = False
         if "-d" in sys.argv:
             draw = True
+        if "-i" in sys.argv:
+            set_up_input = np.array([np.zeros(ROWS*COLUMNS)])
+            set_up_target = np.array([[0,0,0]])
+            neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = SAVE_NAME)
+            neural_net.saveWeights()
+            return
 
     if player:
         return normal_play()
 
     np.seterr(divide='raise', over='raise', under='raise', invalid='raise')
+    np.set_printoptions(threshold=np.nan)
     total_amount = 0
+
+    epsilon = 1.0
 
     for train in range(0, OUTER_ITER):
 
         set_up_input = np.array([np.zeros(ROWS*COLUMNS)])
         set_up_target = np.array([[0,0,0]])
 
-        neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, LOAD, beta=BETA, saveName = SAVE_NAME)
+        neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, True, beta=BETA, saveName = SAVE_NAME)
 
-        observations = deque(maxlen=2000)
-        actions = deque(maxlen=2000)
-        predictions = deque(maxlen=2000)
-        rewards = deque(maxlen=2000)
+        # GATHER DATA
+
+        memory = deque(maxlen = 2000)
 
         for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
@@ -60,25 +70,21 @@ def main():
             while not done:
                 if last_frame is not None and scn_last_frame is not None:
                     obs = (last_frame-scn_last_frame).flatten()
-                    observations.append(obs)
-                    pred = neural_net.predict(obs)
-                    #print(pred)
-                    predictions.append(pred)
-                    action = get_action_from_prediction(pred)
-                    actions.append(action)
+                    action = act(neural_net, obs, epsilon)
                     done = pong.play_one_pong(get_movement_from_action(action))
-
                     current_points = pong.state.points
+                    reward = 0
                     if current_points > last_points:
-                        rewards.append(1)
+                        reward = 1
                     elif done:
-                        rewards.append(-1)
-                    else:
-                        rewards.append(0)
+                        reward = -1
 
                     scn_last_frame = last_frame
                     last_frame = np.copy(pong.state._state)
                     last_points = current_points
+
+                    memory.append((obs, action, reward, (last_frame-scn_last_frame).flatten()))
+
                 else:
                     done = pong.play_one_pong()
                     scn_last_frame = last_frame
@@ -86,84 +92,110 @@ def main():
                     last_points = pong.state.points
 
 
-        #devalue_rewards(rewards)
-        #normalize_reward(rewards)
-        #targets = calcTargets(observations, predictions, actions, rewards)
+        # REPLAY
+        observations = []
+        targets = []
+        # targets2 = []
 
+        devalue_rewards(memory)
+        normalize_rewards(memory)
 
-        # print(np.array(predictions))
-        # print(np.array(actions))
-        # print(np.array(rewards))
-        # print(targets)
+        batch = random.sample(memory, BATCH_SIZE)
 
+        for (obs, action, reward, next_obs) in batch:
+            observations.append(obs)
+            #print(np.reshape(obs, (ROWS, COLUMNS)))
+            target = reward
+            target_f = neural_net.predict(obs)
+            # print("what is predicted")
+            # print(target_f)
+            if not target == -1:
+                target = (reward + DISCOUND_FACTOR * np.amax(neural_net.predict(next_obs)))
+            target_f[action] = target
+            targets.append(target_f)
+            # print("what was supposed to be predicted")
+            # print(target_f)
+            #print(target_f)
 
-        # Save current weight for training
+            #print(target_f)
+            # a = [0,0,0]
+            # p = neural_net.predict(obs)
+            # print(p)
+            # a[action] = 1
+            # t = calcTargets([obs],[p],[a],[reward])
+            # targets2.append(t[0])
+
+        targets = np.array(targets)
+
         w1 = np.copy(neural_net.weights1)
         w2 = np.copy(neural_net.weights2)
 
-        neural_net.mlptrain(observations, targets, TR_SPEED, w1, w2)
+        neural_net.mlptrain(observations, targets, TR_SPEED, w1, w2)#neural_net.weights1, neural_net.weights2)
+
+        if neural_net.epsilon > EPSILON_MIN:
+            neural_net.epsilon *= EPSILON_DECAY
 
         neural_net.saveWeights()
-        current_amount = len(observations)
-        total_amount += current_amount
-        print("One training iteration done and saved! %d" % train)
-        print("It had batch has size %d" % current_amount)
-        print("Completed at: %s" % str(datetime.datetime.now()))
 
-    print("%d training iterations done!" % train)
+        total_amount += BATCH_SIZE
+        print(" --------------------------------------------------")
+        print("One training iteration done and saved!   Number %d" % (train+1))
+        print("Epsilon now sits at: %.5f" % neural_net.epsilon)
+        print(" --------------------------------------------------")
+        print("")
+
+    print("")
+    print("%d training iterations done!" % (train+1))
     print("Total amount of training data: %d" % total_amount)
 
 
-def devalue_rewards(rewards):
+# Return an action
+def act(ann, obs, epsilon):
+    # if np.random.rand() <= ann.epsilon:
+    #     return np.random.randint(0, 3)
+    pred = ann.predict(obs)
+    return np.argmax(pred)
+
+
+def devalue_rewards(batch):
     val = 0
-    for i in range(0, len(rewards)):
-        idx = len(rewards)-1-i
-        if (not rewards[idx] == 0):
-            val = rewards[idx]*DISCOUND_FACTOR
+    for i in range(0, len(batch)):
+        idx = len(batch)-1-i
+        if (not batch[idx][2] == 0):
+            val = batch[idx][2]*DISCOUND_FACTOR
         else:
-            rewards[idx] = val
+            batch[idx] = (batch[idx][0],batch[idx][1], val, batch[idx][3])
         val = val*DISCOUND_FACTOR
         if abs(val) < 0.001:
             val = 0.0
 
-def normalize_reward(rewards):
-    mean = np.mean(rewards)
-    std = np.std(rewards)
-    for i in range(0, len(rewards)):
-        rewards[i] = (rewards[i]-mean)/std
+def normalize_rewards(batch):
+    rew = [reward for (_, _, reward, _) in batch]
+    mean = np.mean(rew)
+    std = np.std(rew)
+    for idx in range(0, len(batch)):
+        batch[idx] = (batch[idx][0],batch[idx][1], (batch[idx][2]-mean)/std, batch[idx][3])
 
 def calcTargets(observations, predictions, actions, rewards):
     targets = []
     for i in range(0, len(observations)):
-        for j in range(0, 3):
-            if predictions[i][j] <= 0.0:
-                predictions[i][j] == 0.0000000001
         log = np.log(predictions[i])
+        #print(log)
         inner = actions[i]*log
+        #print(inner)
         one_move = -rewards[i]*(inner)
+        #print(one_move)
         targets.append(one_move)
 
     return np.array(targets)
 
 
-def get_action_from_prediction(pred):
-    max = -999
-    idx = -1
-    for i in range(0, 3):
-        if pred[i] > max:
-            max = pred[i]
-            idx = i
-
-    temp = [0, 0, 0]
-    temp[idx] = 1
-    return temp
-
 def get_movement_from_action(action):
-    if action[0]:
+    if action == 0:
         return Movement.PAD_L
-    if action[1]:
+    if action == 1:
         return Movement.PAD_STILL
-    if action[2]:
+    if action == 2:
         return Movement.PAD_R
 
 
@@ -173,6 +205,8 @@ def normal_play():
     while not done:
         done = pong.play_one_pong()
     print(" GAME OVER!!\nYou got %d points" % pong.state.points)
+
+
 if __name__ == "__main__":
     main()
     # observation - move - prediction - reward

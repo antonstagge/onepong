@@ -7,13 +7,13 @@ import numpy as np
 # CONSTANTS
 
 ROWS = 40
-COLUMNS = 100
+COLUMNS = 60
 
 PAD_SIZE = 8
 
-EMPTY = 0
+EMPTY = 1
 PAD = 2
-BALL = 1
+BALL = 3
 
 FPS = 150
 # colors
@@ -34,7 +34,7 @@ class State(object):
         self._state = np.zeros((ROWS, COLUMNS), dtype=int)
         self._position = (int(ROWS/2),int(COLUMNS/2))
         start_dir_v = [Movement.d_240, Movement.d_270, Movement.d_300]
-        self._direction = start_dir_v[np.random.randint(0,len(start_dir_v))]
+        self._direction = Movement.d_300#start_dir_v[np.random.randint(0,len(start_dir_v))]
         self._state[self._position[0]][self._position[1]] = BALL
         self._pad = round(COLUMNS/2 - PAD_SIZE/2)
         for i in range(0, PAD_SIZE):
@@ -219,6 +219,9 @@ class PlayPong(object):
     def quit(self):
         pygame.quit()
 
+    def just_show(self):
+        actual_draw(self.state, self.screen, self.clock, self.font)
+
 def draw_and_play(s, screen, clock, font):
     moved = False
     for event in pygame.event.get():
@@ -252,9 +255,9 @@ def actual_draw(s, screen, clock, font):
     for row in range(0,ROWS):
         for column in range(0, COLUMNS):
             color = WHITE
-            if s._state[row][column] == 1:
+            if s._state[row][column] == BALL:
                 color = BALL_COLOR
-            elif s._state[row][column] == 2:
+            elif s._state[row][column] == PAD:
                 color = RAD_COLOR
             pygame.draw.rect(screen,
                              color,
@@ -262,6 +265,7 @@ def actual_draw(s, screen, clock, font):
                               (MARGIN + HEIGHT) * row + MARGIN,
                               WIDTH,
                               HEIGHT])
+
 
     text_id = font.render(("Points: " + str(s.points)), False, (0, 0, 0))
     screen.blit(text_id, (0, 0))
