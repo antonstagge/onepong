@@ -1,20 +1,18 @@
 
-# Code from Chapter 3 of Machine Learning: An Algorithmic Perspective
-# by Stephen Marsland (http://seat.massey.ac.nz/personal/s.r.marsland/MLBook.html)
-
+# Initial Code by Stephen Marsland
 # You are free to use, change, or redistribute the code in any way you wish for
 # non-commercial purposes, but please maintain the name of the original author.
-# This code comes with no warranty of any kind.
+# This code comes with no warranty of any kind. -Stephen Marsland
 
 # Stephen Marsland, 2008
-# Totally edited by Anton Stagge
+# Edited to be used by Deep Q-learning by Anton Stagge 2018
 
 from numpy import *
 
-class mlp:
-    """ A Multi-Layer Perceptron"""
+class network:
+    """ A 2-layerd neural network"""
 
-    def __init__(self,inputs,targets,nhidden, load = False, beta=1,momentum=0.95, saveName = "Weights"):
+    def __init__(self,inputs,targets,nhidden, load = False, beta=1, momentum=0.95, saveName = "Weights"):
         """ Constructor """
         # Set up network size
         self.nin = shape(inputs)[1]
@@ -30,12 +28,12 @@ class mlp:
         if load:
             self.loadWeights()
         else:
+            # new network
             self.weights1 = (random.rand(self.nin+1,self.nhidden)-0.5)*2/sqrt(self.nin)
             self.weights2 = (random.rand(self.nhidden+1,self.nout)-0.5)*2/sqrt(self.nhidden)
             self.epsilon = 1.0
 
-
-    def mlptrain(self, inputs, targets, eta):
+    def train(self, inputs, targets, eta):
         """ Train the thing """
         self.ndata = shape(inputs)[0]
         # Add the inputs that match the bias node
@@ -46,10 +44,9 @@ class mlp:
         updatew2 = zeros((shape(self.weights2)))
 
         for n in range(50):
-            self.outputs = self.mlpfwd(inputs)
+            self.outputs = self.forward(inputs)
 
             deltao = (targets-self.outputs)/self.ndata
-            #print(deltao)
 
             deltah = self.hidden*(1.0-self.hidden)*(dot(deltao,transpose(self.weights2)))
 
@@ -65,7 +62,7 @@ class mlp:
             targets = targets[change,:]
 
 
-    def mlpfwd(self, inputs, add_bias=False):
+    def forward(self, inputs, add_bias=False):
         """ Run the network forward"""
         self.ndata = shape(inputs)[0]
 
@@ -81,15 +78,10 @@ class mlp:
         return outputs
 
     def predict(self, input):
-        """ Just as mlpfwd but with only one vector and with append bias """
+        """ Just as forward but with only one vector  """
         inputs = array([input])
-        inputs = concatenate((inputs,-ones((1,1))),axis=1)
-
-        self.ndata = shape(inputs)[0]
-
-        out = self.mlpfwd(inputs)
+        out = self.forward(inputs, True)
         return out[0]
-
 
     def relu(self, hidden):
         return maximum(0, hidden)
@@ -145,19 +137,10 @@ class mlp:
 #     [-1, 0]
 #     ])
 #
-# temp = [-128.69569334, -127.83431717 ,-127.56004046]
-#
-#
-# test = amax(inputs, axis=1).shape
-# print(test)
-# print(inputs - test)
-#
-# p = mlp(inputs, targets, 10, loadW = False)
+# p = network(inputs, targets, 10, loadW = False)
 # #print(p.softmax(inputs))
 # print("relu")
 # print(p.relu(temp))
 # print(p.stable_softmax(inputs))
-# p.mlptrain(inputs, targets, 0.01, 100)
+# p.train(inputs, targets, 0.01, 100)
 # print(p.predict(inputs[0]))
-# p.saveWeights()
-#print(log(-1))
