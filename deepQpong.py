@@ -34,13 +34,15 @@ def main():
         if "-d" in sys.argv:
             draw = True
         if "-i" in sys.argv:
-            set_up_input = np.array([np.zeros(5)])
-            set_up_target = np.array([[0,0,0]])
-            neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = SAVE_NAME)
-            neural_net.saveWeights()
-            target_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = (SAVE_NAME + "_target"))
-            target_net.saveWeights()
-            return
+            sure = input('Are you sure? (y/n): ')
+            if sure == 'y':
+                set_up_input = np.array([np.zeros(5)])
+                set_up_target = np.array([[0,0,0]])
+                neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = SAVE_NAME)
+                neural_net.saveWeights()
+                target_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = (SAVE_NAME + "_target"))
+                target_net.saveWeights()
+                return
 
     if player:
         return normal_play()
@@ -96,9 +98,6 @@ def main():
 
 
         # REPLAY
-        #devalue_rewards(memory)
-        #normalize_rewards(memory)
-
         batch = random.sample(memory, min(len(memory),BATCH_SIZE))
 
         states = np.array([each[0] for each in batch])
@@ -122,8 +121,9 @@ def main():
             neural_net.epsilon *= EPSILON_DECAY
             target_net.epsilon = neural_net.epsilon
 
-        neural_net.saveWeights()
-        target_net.saveWeights()
+        if not draw:
+            neural_net.saveWeights()
+            target_net.saveWeights()
 
         total_amount += len(batch)
         print(" --------------------------------------------------")
@@ -149,40 +149,6 @@ def get_observation(state):
     obs = np.array([state._position[0], state._position[1], state._direction[0], state._direction[1], state._pad])
     return obs
 
-
-def devalue_rewards(batch):
-    val = 0
-    for i in range(0, len(batch)):
-        idx = len(batch)-1-i
-        if (not batch[idx][2] == 0):
-            val = batch[idx][2]*DISCOUND_FACTOR
-        else:
-            batch[idx] = (batch[idx][0],batch[idx][1], val, batch[idx][3], batch[idx][4])
-        val = val*DISCOUND_FACTOR
-        if abs(val) < 0.0001:
-            val = 0.0
-
-def normalize_rewards(batch):
-    rew = [reward for (_, _, reward, _) in batch]
-    mean = np.mean(rew)
-    std = np.std(rew)
-    for idx in range(0, len(batch)):
-        batch[idx] = (batch[idx][0],batch[idx][1], (batch[idx][2]-mean)/std, batch[idx][3])
-
-def calcTargets(observations, predictions, actions, rewards):
-    targets = []
-    for i in range(0, len(observations)):
-        log = np.log(predictions[i])
-        #print(log)
-        inner = actions[i]*log
-        #print(inner)
-        one_move = -rewards[i]*(inner)
-        #print(one_move)
-        targets.append(one_move)
-
-    return np.array(targets)
-
-
 def get_movement_from_action(action):
     if action == 0:
         return Movement.PAD_L
@@ -190,7 +156,6 @@ def get_movement_from_action(action):
         return Movement.PAD_STILL
     if action == 2:
         return Movement.PAD_R
-
 
 def normal_play():
     pong = PlayPong(True, True)
