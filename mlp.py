@@ -34,34 +34,24 @@ class mlp:
             self.weights2 = (random.rand(self.nhidden+1,self.nout)-0.5)*2/sqrt(self.nhidden)
             self.epsilon = 1.0
 
-        # if self.epsilon < 0.2:
-        #     self.epsilon = 0.8
 
-
-    def mlptrain(self, inputs, targets, eta, w1, w2):
+    def mlptrain(self, inputs, targets, eta):
         """ Train the thing """
         self.ndata = shape(inputs)[0]
         # Add the inputs that match the bias node
         inputs = concatenate((inputs,-ones((self.ndata,1))),axis=1)
         change = list(range(self.ndata))
 
-        updatew1 = zeros((shape(w1)))
-        updatew2 = zeros((shape(w2)))
+        updatew1 = zeros((shape(self.weights1)))
+        updatew2 = zeros((shape(self.weights2)))
 
-        for n in range(100):
-            self.outputs = self.mlpfwd(inputs, w1, w2)
+        for n in range(50):
+            self.outputs = self.mlpfwd(inputs)
 
             deltao = (targets-self.outputs)/self.ndata
-            # if n == 1:
-            #     print(" deltao")
-            #     print(deltao)
-            #     if targets2 is not None:
-            #         print(" TARGETS 2")
-            #         print(targets2/self.ndata)
-            #deltao = targets/self.ndata
-            #print(sum(deltao))
+            #print(deltao)
 
-            deltah = self.hidden*(1.0-self.hidden)*(dot(deltao,transpose(w2)))
+            deltah = self.hidden*(1.0-self.hidden)*(dot(deltao,transpose(self.weights2)))
 
             updatew1 = eta*(dot(transpose(inputs),deltah[:,:-1])) + self.momentum*updatew1
             updatew2 = eta*(dot(transpose(self.hidden),deltao)) + self.momentum*updatew2
@@ -75,15 +65,18 @@ class mlp:
             targets = targets[change,:]
 
 
-    def mlpfwd(self, inputs, w1, w2):
-        """ Run the network forward using weight w1 and w2"""
+    def mlpfwd(self, inputs, add_bias=False):
+        """ Run the network forward"""
         self.ndata = shape(inputs)[0]
 
-        self.hidden = dot(inputs, w1)
-        self.hidden = self.relu(self.hidden)
+        if add_bias:
+            inputs = concatenate((inputs,-ones((self.ndata,1))),axis=1)
+
+        self.hidden = dot(inputs, self.weights1)
+        self.hidden = self.sigmoid(self.hidden)
         self.hidden = concatenate((self.hidden,-ones((shape(inputs)[0],1))),axis=1)
 
-        outputs = dot(self.hidden, w2)
+        outputs = dot(self.hidden, self.weights2)
         outputs = self.linear(outputs)
         return outputs
 
@@ -94,7 +87,7 @@ class mlp:
 
         self.ndata = shape(inputs)[0]
 
-        out = self.mlpfwd(inputs, self.weights1, self.weights2)
+        out = self.mlpfwd(inputs)
         return out[0]
 
 
@@ -133,6 +126,12 @@ class mlp:
         self.weights1 = load((str(1) + "_" + self.saveName + ".npy"))
         self.weights2 = load((str(2) + "_" + self.saveName + ".npy"))
         self.epsilon = load("epsilon_" + self.saveName + ".npy")
+
+    def get_weights(self):
+        return (copy(self.weights1), copy(self.weights2))
+    def set_weights(self, weights):
+        self.weights1 = weights[0]
+        self.weights2 = weights[1]
 
 # # Example how to use it!
 # inputs = array(

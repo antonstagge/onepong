@@ -15,7 +15,7 @@ EMPTY = 1
 PAD = 2
 BALL = 3
 
-FPS = 150
+FPS = 20
 # colors
 BACKGROUND_COLOR = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -34,7 +34,7 @@ class State(object):
         self._state = np.zeros((ROWS, COLUMNS), dtype=int)
         self._position = (int(ROWS/2),int(COLUMNS/2))
         start_dir_v = [Movement.d_240, Movement.d_270, Movement.d_300]
-        self._direction = Movement.d_300#start_dir_v[np.random.randint(0,len(start_dir_v))]
+        self._direction = start_dir_v[np.random.randint(0,len(start_dir_v))]
         self._state[self._position[0]][self._position[1]] = BALL
         self._pad = round(COLUMNS/2 - PAD_SIZE/2)
         for i in range(0, PAD_SIZE):
@@ -75,6 +75,8 @@ class State(object):
     # True if ball is about to bounce on PAD
     def _is_pad_bounce(self):
         new_pos = self._get_new_pos()
+        if new_pos[1] >= COLUMNS:
+            new_pos = (new_pos[0], COLUMNS-1)
         return self._state[ROWS-1][new_pos[1]] == PAD
 
     # Returns the type of bounce move
@@ -136,6 +138,9 @@ class State(object):
 
         if pad:
             new_pos = (ROWS-2, first_new_pos[1])
+
+        if new_pos[1] >= COLUMNS:
+            new_pos = (new_pos[0], COLUMNS-1)
         # move to new_pos
         self._state[self._position[0]][self._position[1]] = EMPTY
         self._state[new_pos[0]][new_pos[1]] = BALL

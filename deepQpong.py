@@ -8,18 +8,19 @@ import mlp
 from collections import deque
 import random
 
-SAVE_NAME = "LESS_HIDDEN"
+SAVE_NAME = "DOUBLE_DQN"
 
-OUTER_ITER = 20
+OUTER_ITER = 1000
 NUMBER_OF_PLAYS = 20
+TARGET_UPDATE_FREQ = 100
 
 BETA = 1
 HIDDEN = 75
 TR_SPEED = 0.001
-DISCOUND_FACTOR = 0.95
+DISCOUND_FACTOR = 0.75
 
 EPSILON_MIN = 0.01
-EPSILON_DECAY = 0.998
+EPSILON_DECAY = 0.995
 
 BATCH_SIZE = 32
 
@@ -33,16 +34,18 @@ def main():
         if "-d" in sys.argv:
             draw = True
         if "-i" in sys.argv:
-            set_up_input = np.array([np.zeros(ROWS*COLUMNS)])
+            set_up_input = np.array([np.zeros(5)])
             set_up_target = np.array([[0,0,0]])
             neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = SAVE_NAME)
             neural_net.saveWeights()
+            target_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = (SAVE_NAME + "_target"))
+            target_net.saveWeights()
             return
 
     if player:
         return normal_play()
 
-    np.seterr(divide='raise', over='raise', under='raise', invalid='raise')
+    np.seterr(divide='raise', over='raise', under='warn', invalid='raise')
     np.set_printoptions(threshold=np.nan)
     total_amount = 0
 
@@ -50,97 +53,83 @@ def main():
 
     for train in range(0, OUTER_ITER):
 
-        set_up_input = np.array([np.zeros(ROWS*COLUMNS)])
+        set_up_input = np.array([np.zeros(5)])
         set_up_target = np.array([[0,0,0]])
 
         neural_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, True, beta=BETA, saveName = SAVE_NAME)
+        target_net = mlp.mlp(set_up_input, set_up_target, HIDDEN, True, beta=BETA, saveName = (SAVE_NAME + "_target"))
+
+        # Sometime update target_network
+        if train % TARGET_UPDATE_FREQ == 0:
+            target_net.set_weights(neural_net.get_weights())
+
+        # randomly swap the target and active networks
+        if np.random.uniform() < 0.5:
+            temp = neural_net
+            neural_net = target_net
+            target_net = temp
 
         # GATHER DATA
-
         memory = deque(maxlen = 2000)
-
+        max_points = 0
         for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
             pong = PlayPong(player, draw)
 
             done = False
-            last_frame = np.copy(pong.state._state)
-            scn_last_frame = None
             last_points = 0
             while not done:
-                if last_frame is not None and scn_last_frame is not None:
-                    obs = (last_frame-scn_last_frame).flatten()
-                    action = act(neural_net, obs, epsilon)
-                    done = pong.play_one_pong(get_movement_from_action(action))
-                    current_points = pong.state.points
-                    reward = 0
-                    if current_points > last_points:
-                        reward = 1
-                    elif done:
-                        reward = -1
+                obs = get_observation(pong.state)
+                action = act(neural_net, obs, epsilon)
+                done = pong.play_one_pong(get_movement_from_action(action))
+                current_points = pong.state.points
+                if current_points > max_points:
+                    max_points = current_points
+                reward = 0
+                if current_points > last_points:
+                    reward = 1
+                elif done:
+                    reward = -1
+                last_points = current_points
 
-                    scn_last_frame = last_frame
-                    last_frame = np.copy(pong.state._state)
-                    last_points = current_points
-
-                    memory.append((obs, action, reward, (last_frame-scn_last_frame).flatten()))
-
-                else:
-                    done = pong.play_one_pong()
-                    scn_last_frame = last_frame
-                    last_frame = np.copy(pong.state._state)
-                    last_points = pong.state.points
+                memory.append((obs, action, reward, get_observation(pong.state), done))
 
 
         # REPLAY
-        observations = []
-        targets = []
-        # targets2 = []
+        #devalue_rewards(memory)
+        #normalize_rewards(memory)
 
-        devalue_rewards(memory)
-        normalize_rewards(memory)
+        batch = random.sample(memory, min(len(memory),BATCH_SIZE))
 
-        batch = random.sample(memory, BATCH_SIZE)
+        states = np.array([each[0] for each in batch])
+        next_states = np.array([each[3] for each in batch])
 
-        for (obs, action, reward, next_obs) in batch:
-            observations.append(obs)
-            #print(np.reshape(obs, (ROWS, COLUMNS)))
-            target = reward
-            target_f = neural_net.predict(obs)
-            # print("what is predicted")
-            # print(target_f)
-            if not target == -1:
-                target = (reward + DISCOUND_FACTOR * np.amax(neural_net.predict(next_obs)))
-            target_f[action] = target
-            targets.append(target_f)
-            # print("what was supposed to be predicted")
-            # print(target_f)
-            #print(target_f)
+        targets = neural_net.mlpfwd(states, add_bias=True)
+        next_states_q_values = target_net.mlpfwd(next_states, add_bias=True)
+        next_states_q_values_live_network = neural_net.mlpfwd(next_states, add_bias=True)
 
-            #print(target_f)
-            # a = [0,0,0]
-            # p = neural_net.predict(obs)
-            # print(p)
-            # a[action] = 1
-            # t = calcTargets([obs],[p],[a],[reward])
-            # targets2.append(t[0])
+        for i in range(len(batch)):
+            (_, action, reward, _, is_terminal) = batch[i]
+            if is_terminal:
+                targets[i, action] = reward
+            else:
+                selected_action = np.argmax(next_states_q_values_live_network[i]) # get max action based on live network
+                targets[i, action] = reward + DISCOUND_FACTOR * next_states_q_values[i, selected_action] # use target network value
 
-        targets = np.array(targets)
-
-        w1 = np.copy(neural_net.weights1)
-        w2 = np.copy(neural_net.weights2)
-
-        neural_net.mlptrain(observations, targets, TR_SPEED, w1, w2)#neural_net.weights1, neural_net.weights2)
+        neural_net.mlptrain(states, targets, TR_SPEED)
 
         if neural_net.epsilon > EPSILON_MIN:
             neural_net.epsilon *= EPSILON_DECAY
+            target_net.epsilon = neural_net.epsilon
 
         neural_net.saveWeights()
+        target_net.saveWeights()
 
-        total_amount += BATCH_SIZE
+        total_amount += len(batch)
         print(" --------------------------------------------------")
         print("One training iteration done and saved!   Number %d" % (train+1))
         print("Epsilon now sits at: %.5f" % neural_net.epsilon)
+        print("Max points reached was: %d" % max_points)
         print(" --------------------------------------------------")
         print("")
 
@@ -151,10 +140,14 @@ def main():
 
 # Return an action
 def act(ann, obs, epsilon):
-    # if np.random.rand() <= ann.epsilon:
-    #     return np.random.randint(0, 3)
+    if np.random.rand() <= ann.epsilon:
+        return np.random.randint(0, 3)
     pred = ann.predict(obs)
     return np.argmax(pred)
+
+def get_observation(state):
+    obs = np.array([state._position[0], state._position[1], state._direction[0], state._direction[1], state._pad])
+    return obs
 
 
 def devalue_rewards(batch):
@@ -164,9 +157,9 @@ def devalue_rewards(batch):
         if (not batch[idx][2] == 0):
             val = batch[idx][2]*DISCOUND_FACTOR
         else:
-            batch[idx] = (batch[idx][0],batch[idx][1], val, batch[idx][3])
+            batch[idx] = (batch[idx][0],batch[idx][1], val, batch[idx][3], batch[idx][4])
         val = val*DISCOUND_FACTOR
-        if abs(val) < 0.001:
+        if abs(val) < 0.0001:
             val = 0.0
 
 def normalize_rewards(batch):
