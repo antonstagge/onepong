@@ -110,14 +110,14 @@ class network:
         return 1.0/(1.0+exp(-self.beta*hidden))
 
     def saveWeights(self):
-        save((str(1)+ "_" + self.saveName + ".npy"), self.weights1)
-        save((str(2)+ "_" + self.saveName + ".npy"), self.weights2)
-        save("epsilon_" + self.saveName + ".npy", self.epsilon)
+        save((self.saveName + "_" + str(1) + ".npy"), self.weights1)
+        save((self.saveName + "_" + str(2) + ".npy"), self.weights2)
+        save((self.saveName + "_epsilon" + ".npy"), self.epsilon)
 
     def loadWeights(self):
-        self.weights1 = load((str(1) + "_" + self.saveName + ".npy"))
-        self.weights2 = load((str(2) + "_" + self.saveName + ".npy"))
-        self.epsilon = load("epsilon_" + self.saveName + ".npy")
+        self.weights1 = load((self.saveName + "_" + str(1) + ".npy"))
+        self.weights2 = load((self.saveName + "_" + str(2) + ".npy"))
+        self.epsilon = load((self.saveName + "_epsilon" + ".npy"))
 
     def get_weights(self):
         return (copy(self.weights1), copy(self.weights2))
