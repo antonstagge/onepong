@@ -4,10 +4,10 @@ import pygame
 import numpy as np
 
 # CONSTANTS
-ROWS = 40
+ROWS = 50
 COLUMNS = 60
 
-PAD_SIZE = 8
+PAD_SIZE = 12 # has to be even
 
 EMPTY = 1
 PAD = 2
@@ -33,7 +33,7 @@ class State(object):
     """
     def __init__(self):
         self._state = np.zeros((ROWS, COLUMNS), dtype=int)
-        self._position = (int(ROWS/2),int(COLUMNS/2))
+        self._position = (int(ROWS/4),int(COLUMNS/2))
         start_dir_v = [Movement.d_240, Movement.d_270, Movement.d_300]
         self._direction = start_dir_v[np.random.randint(0,len(start_dir_v))]
         self._state[self._position[0]][self._position[1]] = BALL
@@ -90,6 +90,8 @@ class State(object):
         new_pos = self._get_new_pos()
         if new_pos[1] >= COLUMNS:
             new_pos = (new_pos[0], COLUMNS-1)
+        if new_pos[1] < 0:
+            new_pos = (new_pos[0], 0)
         return self._state[ROWS-1][new_pos[1]] == PAD
 
     def _move_ball_bounce(self, pad=False):
@@ -110,19 +112,32 @@ class State(object):
 
         if pad and new_pos[0] > ROWS-2:
             # special direction change when bouncing on PAD
+            dir_in = [Movement.d_210, Movement.d_225, Movement.d_240, Movement.d_270, Movement.d_300, Movement.d_315, Movement.d_330]
+            dir_out = [Movement.d_150, Movement.d_135, Movement.d_120, Movement.d_90, Movement.d_60, Movement.d_45, Movement.d_30]
+            dir_idx = -1
+            for d in range(0, len(dir_in)):
+                if self._direction == dir_in[d]:
+                    dir_idx = d
+
             dist = self._position[1] - self._pad
-            if dist == 0 or dist == 1:
-                self._direction = Movement.d_150
-            elif dist == 2:
-                self._direction = Movement.d_135
-            elif dist == 3:
-                self._direction = Movement.d_120
-            elif dist == 4:
-                self._direction = Movement.d_60
-            elif dist == 5:
-                self._direction = Movement.d_45
-            elif dist == 6 or dist == 7:
-                self._direction = Movement.d_30
+
+            if dist < PAD_SIZE/4:
+                dir_idx -= 2
+                if dir_idx < 0:
+                    dir_idx = 0
+            elif dist < PAD_SIZE/2:
+                dir_idx -= 1
+                if dir_idx < 0:
+                    dir_idx = 0
+            elif dist < PAD_SIZE*3/4:
+                dir_idx += 1
+                if dir_idx >= len(dir_out):
+                    dir_idx = len(dir_out)-1
+            else:
+                dir_idx += 1
+                if dir_idx >= len(dir_out):
+                    dir_idx = len(dir_out)-1
+            self._direction = dir_out[dir_idx]
 
         if self._position[1] == 1:
             # left one away
@@ -150,9 +165,9 @@ class State(object):
             # btn now
             new_pos = (ROWS-4, new_pos[1])
 
-        if pad:
+        #if pad:
             # fixed new_pos when bouncing on pad
-            new_pos = (ROWS-2, first_new_pos[1])
+            #new_pos = (ROWS-2, new_pos[1])
 
         if new_pos[1] >= COLUMNS:
             # special case for right corner

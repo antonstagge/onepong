@@ -10,14 +10,14 @@ import deep_neural_network
 from collections import deque
 import random
 
-SAVE_NAME = "HIDDEN_10"
+SAVE_NAME = "FIXED_GAME"
 
 OUTER_ITER = 10000
 NUMBER_OF_PLAYS = 20
 TARGET_UPDATE_FREQ = 100
 
 BETA = 0.99
-HIDDEN = 75
+HIDDEN = 10
 TR_SPEED = 0.001
 DISCOUND_FACTOR = 0.95
 
@@ -115,7 +115,7 @@ def main():
                 memory.append((obs, action, reward, get_observation(pong.state), done))
 
         if max_points > 50:
-            print("reached more than 50 points training is complete!")
+            print("Reached more than 50 points training is complete!")
             exit()
 
         # REPLAY
