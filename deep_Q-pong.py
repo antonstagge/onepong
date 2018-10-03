@@ -9,6 +9,7 @@ from onepong import *
 import deep_neural_network
 from collections import deque
 import random
+import matplotlib.pyplot as plt
 
 SAVE_NAME = "FIXED_GAME"
 
@@ -149,6 +150,7 @@ def main():
 
         # Actually train the live network
         neural_net.train(states, targets, TR_SPEED)
+
         # update epsilons
         if neural_net.epsilon > EPSILON_MIN:
             neural_net.epsilon *= EPSILON_DECAY

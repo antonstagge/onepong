@@ -1,11 +1,9 @@
 
 # Initial Code by Stephen Marsland
 # You are free to use, change, or redistribute the code in any way you wish for
-# non-commercial purposes, but please maintain the name of the original author.
-# This code comes with no warranty of any kind. -Stephen Marsland
-
-# Stephen Marsland, 2008
-# Edited to be used by Deep Q-learning by Anton Stagge 2018
+# non-commercial purposes. -Stephen Marsland
+#
+# Improved and edited to be used by Deep Q-learning by Anton Stagge 2018
 
 from numpy import *
 
