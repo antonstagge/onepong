@@ -10,16 +10,16 @@ import deep_neural_network
 from collections import deque
 import random
 
-SAVE_NAME = "DOUBLE_DQN"
+SAVE_NAME = "HIDDEN_10"
 
-OUTER_ITER = 1000
+OUTER_ITER = 10000
 NUMBER_OF_PLAYS = 20
 TARGET_UPDATE_FREQ = 100
 
-BETA = 1
+BETA = 0.99
 HIDDEN = 75
 TR_SPEED = 0.001
-DISCOUND_FACTOR = 0.75
+DISCOUND_FACTOR = 0.95
 
 EPSILON_MIN = 0.01
 EPSILON_DECAY = 0.995
@@ -29,7 +29,7 @@ BATCH_SIZE = 32
 def main():
     """
     This main function will either let you play the pong game yourself (no flags),
-    watch the ai play the game with flags -ai -d,
+    watch the ai play the game with flags -ai -d (swap which net is used with -swap),
     train the ai with flag -ai
     or reset the weight for training with flag -i
 
@@ -43,11 +43,14 @@ def main():
     """
     player = True
     draw = False
+    swap = False
     if len(sys.argv) > 1:
         if "-ai" in sys.argv:
             player = False
         if "-d" in sys.argv:
             draw = True
+            if "-swap" in sys.argv:
+                swap = True
         if "-i" in sys.argv:
             sure = input('Are you sure? (y/n): ')
             if sure == 'y':
@@ -57,7 +60,7 @@ def main():
                 neural_net.saveWeights()
                 target_net = deep_neural_network.network(set_up_input, set_up_target, HIDDEN, False, beta=BETA, saveName = (SAVE_NAME + "_target"))
                 target_net.saveWeights()
-                return
+            return
 
     if player:
         return normal_play()
@@ -75,14 +78,17 @@ def main():
         target_net = deep_neural_network.network(set_up_input, set_up_target, HIDDEN, True, beta=BETA, saveName = (SAVE_NAME + "_target"))
 
         # Sometime sync target_network
-        if train % TARGET_UPDATE_FREQ == 0:
+        if train % TARGET_UPDATE_FREQ == 0 and not draw:
             target_net.set_weights(neural_net.get_weights())
 
         # randomly swap the target and live networks
-        if np.random.uniform() < 0.5:
+        if (np.random.uniform() < 0.5 and not draw) or swap:
             temp = neural_net
             neural_net = target_net
             target_net = temp
+
+        if draw:
+            print("live net is now %s" % neural_net.saveName)
 
         # GATHER TRAINING DATA
         memory = deque(maxlen = 2000)
@@ -108,13 +114,21 @@ def main():
                 last_points = current_points
                 memory.append((obs, action, reward, get_observation(pong.state), done))
 
+        if max_points > 50:
+            print("reached more than 50 points training is complete!")
+            exit()
 
         # REPLAY
+        devalue_rewards(memory)
+        #normalize_rewards(memory)
+
         # use a small batch of training data to train on
         batch = random.sample(memory, min(len(memory),BATCH_SIZE))
 
         states = np.array([each[0] for each in batch])
         next_states = np.array([each[3] for each in batch])
+
+
         # set targets to predicted outputs so that we only affect the action
         # that we took.
         targets = neural_net.forward(states, add_bias=True)
@@ -162,7 +176,7 @@ def act(ann, obs, draw):
     Returns a random action when epsilon if high.
     Otherwise return the action that will maximize the predicted reward.
     """
-    if np.random.rand() <= ann.epsilon:
+    if np.random.rand() <= ann.epsilon and not draw:
         return np.random.randint(0, 3)
     pred = ann.predict(obs)
     return np.argmax(pred)
@@ -193,6 +207,24 @@ def normal_play():
         done = pong.play_one_pong()
     print(" GAME OVER!!\nYou got %d points" % pong.state.points)
 
+def devalue_rewards(batch):
+    val = 0
+    for i in range(0, len(batch)):
+        idx = len(batch)-1-i
+        if (not batch[idx][2] == 0):
+            val = batch[idx][2]*DISCOUND_FACTOR
+        else:
+            batch[idx] = (batch[idx][0],batch[idx][1], val, batch[idx][3], batch[idx][4])
+        val = val*DISCOUND_FACTOR
+        if abs(val) < 0.001:
+            val = 0.0
+
+def normalize_rewards(batch):
+    rew = [reward for (_, _, reward, _, _) in batch]
+    mean = np.mean(rew)
+    std = np.std(rew)
+    for idx in range(0, len(batch)):
+        batch[idx] = (batch[idx][0],batch[idx][1], (batch[idx][2]-mean)/std, batch[idx][3],  batch[idx][4])
 
 if __name__ == "__main__":
     main()
