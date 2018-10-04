@@ -24,7 +24,7 @@ WIDTH = 10
 HEIGHT = 10
 MARGIN = 1
 # Set the HEIGHT and WIDTH of the screen
-WINDOW_SIZE = [COLUMNS*(WIDTH+MARGIN) +MARGIN, ROWS*(HEIGHT + MARGIN) + MARGIN]
+WINDOW_SIZE = [COLUMNS*(WIDTH+MARGIN) + MARGIN, ROWS*(HEIGHT+MARGIN) + MARGIN]
 
 class State(object):
     """
@@ -228,11 +228,13 @@ class PlayPong(object):
     """
     Run a game of pong.
     """
-    def __init__(self, player, draw):
+    def __init__(self, player=False, draw=False):
         self.player = player # if False the AI is playing
         self.draw = draw
         self.done = False
         self.state = State()
+        self.last_points = 0
+        self.current_points = 0
         if draw:
             pygame.init()
             pygame.font.init()
@@ -259,7 +261,17 @@ class PlayPong(object):
 
         done_play = self.state.run()
         self.done = done_draw or done_play
+        self.last_points = self.current_points
+        self.current_points = self.state.points
         return self.done
+
+    def get_reward(self):
+        reward = 0
+        if self.current_points > self.last_points:
+            reward = 1
+        elif self.done:
+            reward = -1
+        return reward
 
 def draw_and_play(s, screen, clock, font):
     """ Take input from keyboard for PAD then draw the game"""

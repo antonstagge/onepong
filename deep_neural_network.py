@@ -8,15 +8,15 @@
 from numpy import *
 
 class network:
-    """ A 2-layerd neural network"""
+    """ A neural network"""
 
-    def __init__(self,inputs,targets,nhidden, load = False, beta=1, momentum=0.95, saveName = "Weights"):
+    def __init__(self,n_in,n_hidden,n_out, load = False, beta=1, momentum=0.95, saveName = "Weights"):
         """ Constructor """
         # Set up network size
-        self.nin = shape(inputs)[1]
-        self.nout = shape(targets)[1]
-        self.ndata = shape(inputs)[0]
-        self.nhidden = nhidden
+        self.nin = n_in
+        self.nout = n_out
+        self.ndata = 1
+        self.nhidden = n_hidden
 
         self.beta = beta
         self.momentum = momentum
