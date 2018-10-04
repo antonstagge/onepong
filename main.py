@@ -1,19 +1,14 @@
 #!/usr/bin/python3
 # Code written by Anton Stagge 2018
 
-import datetime
-import pygame
 import sys
 import numpy as np
 from onepong import *
 import deep_neural_network
 import DQN
 from collections import deque
-import random
-import matplotlib.pyplot as plt
 
-SAVE_NAME = "TESTING"
-
+SAVE_NAME = "BIG_BATCH"
 
 
 OUTER_ITER = 10000
@@ -80,7 +75,7 @@ def main():
             BATCH_SIZE,
             initialize = PlayPong,
             play_one_iteration = PlayPong.play_one_pong,
-            get_observation = get_observation,
+            get_observation = PlayPong.get_observation,
             get_reward = PlayPong.get_reward)
         return
 
@@ -94,7 +89,7 @@ def normal_play():
 
 def ai_play(swap_network):
     if swap_network:
-        print("swapped")
+        print("Swapped")
         neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, saveName = (SAVE_NAME + "_target"))
     else:
         neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, saveName = SAVE_NAME)
@@ -102,21 +97,10 @@ def ai_play(swap_network):
     pong = PlayPong(False, True)
     done = False
     while not done:
-        obs = get_observation(pong)
+        obs = pong.get_observation()
         action = DQN.act(neural_net, obs, training = False)
         done = pong.play_one_pong(action)
     print(" GAME OVER!!\AI scored %d points" % pong.state.points)
-
-def get_observation(pong):
-    """ Return the vector representation of a pong state
-        which is the balls position direction and the pads position.
-    """
-    state = pong.state
-    obs = np.array([state._position[0], state._position[1],
-        state._direction[0],
-        state._direction[1],
-        state._pad])
-    return obs
 
 
 if __name__ == "__main__":

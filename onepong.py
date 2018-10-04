@@ -265,6 +265,17 @@ class PlayPong(object):
         self.current_points = self.state.points
         return self.done
 
+    def get_observation(self):
+        """ Return the vector representation of a pong state
+            which is the balls position direction and the pads position.
+        """
+        state = self.state
+        obs = np.array([state._position[0], state._position[1],
+            state._direction[0],
+            state._direction[1],
+            state._pad])
+        return obs
+
     def get_reward(self):
         reward = 0
         if self.current_points > self.last_points:
