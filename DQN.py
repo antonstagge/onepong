@@ -51,12 +51,12 @@ def training_iteration(
     initialize: constructor to init and return the game
     play_one_iteration: function to move game forward using parameter action
     get_observation: function to return a input vecor of len N_IN
-    get_reward: function to return the reward for a state. 
+    get_reward: function to return the reward for a state.
     """
     np.seterr(divide='raise', over='raise', under='warn', invalid='raise')
     np.set_printoptions(threshold=np.nan)
 
-    total_amount_training_data = 0 # only for printing
+    total_amount_training_data = 0 # used for printing
 
     for train in range(0, OUTER_ITER):
         # Initialising networks
@@ -75,7 +75,7 @@ def training_iteration(
 
         # GATHER TRAINING DATA
         memory = deque(maxlen = 2000)
-        max_points = 0
+        max_reached = 0
         for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
             game = initialize()
@@ -88,15 +88,15 @@ def training_iteration(
                 action = act(neural_net, obs)
                 done = play_one_iteration(game, action)
                 reward = get_reward(game)
-                accumulated_reward += reward
                 memory.append((obs, action, reward, get_observation(game), done))
+                accumulated_reward += reward
                 game_iters += 1
 
-            if accumulated_reward > max_points:
-                max_points = accumulated_reward
+            if accumulated_reward > max_reached:
+                max_reached = accumulated_reward
 
             # Stop training when AI reaches MAX_POINTS in a game
-            if max_points > MAX_POINTS:
+            if max_reached > MAX_POINTS:
                 print("Reached more than 50 points training is complete!")
                 exit()
 
@@ -108,7 +108,6 @@ def training_iteration(
 
         states = np.array([each[0] for each in batch])
         next_states = np.array([each[3] for each in batch])
-
 
         # set targets to predicted outputs so that we only affect the action
         # that we took.
@@ -144,7 +143,7 @@ def training_iteration(
         print(" --------------------------------------------------")
         print("One training iteration done and saved!   Number %d" % (train+1))
         print("Epsilon now sits at: %.5f" % neural_net.epsilon)
-        print("Max points reached was: %d" % max_points)
+        print("Max points reached was: %d" % max_reached)
         print(" --------------------------------------------------")
         print("")
 
@@ -154,7 +153,7 @@ def training_iteration(
 
 def act(ann, obs, training = True):
     """
-    Returns a random action when epsilon if high.
+    Returns a random action when epsilon is high and training.
     Otherwise return the action that will maximize the predicted reward.
     """
     if np.random.rand() <= ann.epsilon and training:
