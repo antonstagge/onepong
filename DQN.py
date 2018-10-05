@@ -9,6 +9,7 @@ import deep_neural_network
 from collections import deque
 import random
 import matplotlib.pyplot as plt
+import graphics
 
 BETA = 0.99
 MAX_GAME_ITER = 9999999
@@ -17,7 +18,7 @@ EPSILON_MIN = 0.01
 
 def training_iteration(
     SAVE_NAME, OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
-    N_IN, HIDDEN, N_OUT,
+    N_IN, N_HIDDEN, N_OUT,
     TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
     BATCH_SIZE,
     initialize,
@@ -60,8 +61,8 @@ def training_iteration(
 
     for train in range(0, OUTER_ITER):
         # Initialising networks
-        neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, beta=BETA, saveName = SAVE_NAME)
-        target_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, beta=BETA, saveName = (SAVE_NAME + "_target"))
+        neural_net = deep_neural_network.network(N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName = SAVE_NAME)
+        target_net = deep_neural_network.network(N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName = (SAVE_NAME + "_target"))
 
         # Sometime sync target_network
         if train % NETWORK_SYNC_FREQ == 0:

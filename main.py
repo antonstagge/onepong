@@ -8,7 +8,7 @@ import deep_neural_network
 import DQN
 from collections import deque
 
-SAVE_NAME = "BIG_BATCH"
+SAVE_NAME = "TESTING"
 
 
 OUTER_ITER = 10000
@@ -40,8 +40,6 @@ def main():
     ai = False
     swap = False
     init = False
-
-    draw = False
 
     if len(sys.argv) > 1:
         if "-play" in sys.argv:
