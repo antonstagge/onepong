@@ -9,14 +9,16 @@ def draw(screen, grow, inputs, hidden, outputs):
         screen_size = screen.get_size()
         screen = pygame.display.set_mode([screen_size[0] + DRAWING_AREA, screen_size[1]])
     # normalize
-    new_inputs = [0.0,0.0,0.0,0.0,0.0]
-    new_inputs[0] = inputs[0]/50
-    new_inputs[1] = inputs[1]/60
-    new_inputs[2] = abs(inputs[2])/2
-    new_inputs[3] = abs(inputs[3])/2
-    new_inputs[4] = inputs[4]/50
+    # new_inputs = [0.0,0.0,0.0,0.0,0.0]
+    # new_inputs[0] = inputs[0]/50
+    # new_inputs[1] = inputs[1]/60
+    # new_inputs[2] = abs(inputs[2])/2
+    # new_inputs[3] = abs(inputs[3])/2
+    # new_inputs[4] = inputs[4]/50
+    # inputs = new_inputs
 
-    inputs = new_inputs
+    #inputs = sigmoid(inputs)
+    inputs = inputs/np.linalg.norm(inputs)
     outputs = softmax(outputs)
 
     in_positions = []
