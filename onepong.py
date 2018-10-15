@@ -13,7 +13,7 @@ EMPTY = 1
 PAD = 2
 BALL = 3
 
-FPS = 60
+FPS = 30
 # colors
 BACKGROUND_COLOR = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -240,6 +240,8 @@ class PlayPong(object):
             pygame.font.init()
             self.font = pygame.font.SysFont(pygame.font.get_default_font(), 30)
             self.screen = pygame.display.set_mode(WINDOW_SIZE)
+            # Set the screen background
+            self.screen.fill(BACKGROUND_COLOR)
             # Used to manage how fast the screen updates
             self.clock = pygame.time.Clock()
 
@@ -313,8 +315,7 @@ def draw_and_play(s, screen, clock, font):
 
 def actual_draw(s, screen, clock, font):
     """ Draw the game """
-    # Set the screen background
-    screen.fill(BACKGROUND_COLOR)
+
     # Draw the state
     for row in range(0,ROWS):
         for column in range(0, COLUMNS):

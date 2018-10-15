@@ -72,7 +72,7 @@ class network:
         self.hidden = concatenate((self.hidden,-ones((shape(inputs)[0],1))),axis=1)
 
         outputs = dot(self.hidden, self.weights2)
-        outputs = self.linear(outputs)
+        self.outputs = self.linear(outputs)
         return outputs
 
     def predict(self, input):

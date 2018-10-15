@@ -9,7 +9,6 @@ import deep_neural_network
 from collections import deque
 import random
 import matplotlib.pyplot as plt
-import graphics
 
 BETA = 0.99
 MAX_GAME_ITER = 9999999

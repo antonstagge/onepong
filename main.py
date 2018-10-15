@@ -5,10 +5,11 @@ import sys
 import numpy as np
 from onepong import *
 import deep_neural_network
+import draw_neural_net
 import DQN
 from collections import deque
 
-SAVE_NAME = "TESTING"
+SAVE_NAME = "DEMO"
 
 
 OUTER_ITER = 10000
@@ -94,9 +95,12 @@ def ai_play(swap_network):
     # player False and draw True
     pong = PlayPong(False, True)
     done = False
+    grow = True
     while not done:
         obs = pong.get_observation()
         action = DQN.act(neural_net, obs, training = False)
+        draw_neural_net.draw(pong.screen, grow, obs, neural_net.hidden[0], neural_net.outputs[0])
+        grow = False
         done = pong.play_one_pong(action)
     print(" GAME OVER!!\AI scored %d points" % pong.state.points)
 
