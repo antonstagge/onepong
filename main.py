@@ -56,7 +56,6 @@ def main():
     argv = sys.argv[1:]
     try:
         opts, args = getopt.getopt(argv,"hpa:st:i:",["help", "play", "ai=", "swap", "train=", "init="])
-        print(opts)
     except getopt.GetoptError:
         print(usage())
         sys.exit(2)
@@ -83,7 +82,7 @@ def main():
     elif ai:
         return ai_play(swap, SAVE_NAME)
     elif init:
-        sure = input('Are you sure? (y/n): ')
+        sure = input('Are you sure? (y/n):\n')
         if sure == 'y':
             neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, False, saveName = SAVE_NAME)
             neural_net.saveWeights()
