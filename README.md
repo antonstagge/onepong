@@ -57,3 +57,15 @@ are active in the process of choosing an action.
 ## main.py
 This file ties the onepong game together with the DQN, or simply lets you play
 a game of pong on your own.
+
+#### To play a game of pong
+`> python3 main.py -p`
+
+#### To train a new network to play pong
+`> python3 main.py -i DEMO`
+`> python3 main.py -t DEMO`
+
+#### To watch the ai play
+`> python3 main.py -a DEMO`
+or to use the other network
+`> python3 main.py -a -s DEMO`

@@ -30,13 +30,13 @@ BATCH_SIZE = 32
 def usage():
     string =  "There are multiple things you can do with onepong!\n"
     string += "you run it by typing:\n\n"
-    string += "python3 main.py [-h] [-p] [-a [-s <input_file.npy>] [-t <input_file.npy>] [-i <input_file.npy>]\n\n"
+    string += "python3 main.py [-h] [-p] [-a [-s <trial_name>] [-t <trial_name>] [-i <trial_name>]\n\n"
     string += "-h --help : shows this help message.\n\n"
     string += "-p --play : play a game of onepong yourself.\n\n"
     string += "-a --ai   : watch as the neural network plays onepong. Combine with\n"
     string += "            -s or --swap to use the second neural network for decision making.\n\n"
-    string += "-t --train: train the neural network, updates the weights in input_file.npy\n\n"
-    string += "-i --init : creates intput_file, and initialize the network with random weights. \n\n"
+    string += "-t --train: train the neural network, updates the weights in the trial_name files\n\n"
+    string += "-i --init : creates the files needed under name trial_name, and initialize the network with random weights. \n\n"
     return string
 
 def main():
@@ -45,7 +45,7 @@ def main():
     watch the ai play the game with flags -a (swap which net is used with -s),
     train the ai with flag -t
     or initialize the weights randomly for training with flag -i
-    use -h or --help to get more information about the usage. 
+    use -h or --help to get more information about the usage.
     """
     player = False
     train = False
