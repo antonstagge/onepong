@@ -101,7 +101,7 @@ def training_iteration(
                 exit()
 
         # REPLAY
-        devalue_rewards(memory, DISCOUND_FACTOR)
+        devalue_rewards(memory, DISCOUND_FACTOR*0.8)
 
         # use a small batch of training data to train on
         batch = random.sample(memory, min(len(memory),BATCH_SIZE))

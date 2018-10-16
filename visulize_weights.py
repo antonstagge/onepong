@@ -81,13 +81,15 @@ class NeuralNetwork():
 
 
 if __name__ == "__main__":
+    argv = sys.argv[1:]
+    SAVE_NAME = argv[0]
     vertical_distance_between_layers = 6
     horizontal_distance_between_neurons = 2
     neuron_radius = 0.5
     number_of_neurons_in_widest_layer = 4
     network = NeuralNetwork()
 
-    neural_net = deep_neural_network.network(5, 10, 3, load=True, saveName = "DEMO")
+    neural_net = deep_neural_network.network(5, 10, 3, load=True, saveName = SAVE_NAME)
     # weights to convert from 10 outputs to 4 (decimal digits to their binary representation)
     network.add_layer(3, neural_net.weights2)
     network.add_layer(10, neural_net.weights1)

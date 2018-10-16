@@ -13,7 +13,7 @@ EMPTY = 1
 PAD = 2
 BALL = 3
 
-FPS = 30
+FPS = 20
 # colors
 BACKGROUND_COLOR = (0, 0, 0)
 WHITE = (255, 255, 255)

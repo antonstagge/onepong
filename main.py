@@ -2,15 +2,13 @@
 # Code written by Anton Stagge 2018
 
 import sys
+import getopt
 import numpy as np
 from onepong import *
 import deep_neural_network
 import draw_neural_net
 import DQN
 from collections import deque
-
-SAVE_NAME = "DEMO"
-
 
 OUTER_ITER = 10000
 NUMBER_OF_PLAYS = 20
@@ -29,6 +27,18 @@ EPSILON_DECAY = 0.995
 
 BATCH_SIZE = 32
 
+def usage():
+    string =  "There are multiple things you can do with onepong!\n"
+    string += "you run it by typing:\n\n"
+    string += "python3 main.py [-h] [-p] [-a [-s <input_file.npy>] [-t <input_file.npy>] [-i <input_file.npy>]\n\n"
+    string += "-h --help : shows this help message.\n\n"
+    string += "-p --play : play a game of onepong yourself.\n\n"
+    string += "-a --ai   : watch as the neural network plays onepong. Combine with\n"
+    string += "            -s or --swap to use the second neural network for decision making.\n\n"
+    string += "-t --train: train the neural network, updates the weights in input_file.npy\n\n"
+    string += "-i --init : creates intput_file, and initialize the network with random weights. \n\n"
+    return string
+
 def main():
     """
     This main function will either let you play the pong game yourself with -play,
@@ -41,23 +51,37 @@ def main():
     ai = False
     swap = False
     init = False
+    SAVE_NAME = 'DEFAULT'
 
-    if len(sys.argv) > 1:
-        if "-play" in sys.argv:
+    argv = sys.argv[1:]
+    try:
+        opts, args = getopt.getopt(argv,"hpa:st:i:",["help", "play", "ai=", "swap", "train=", "init="])
+        print(opts)
+    except getopt.GetoptError:
+        print(usage())
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            print(usage())
+        elif opt in ('-p', '--play'):
             player = True
-        elif "-ai" in sys.argv:
+        elif opt in ('-a', '--ai'):
             ai = True
-            if "-swap" in sys.argv:
-                swap = True
-        elif "-train" in sys.argv:
+            SAVE_NAME = arg
+        elif opt in ('-s', '--swap'):
+            swap = True
+        elif opt in ('-t', '--train'):
             train = True
-        elif "-i" in sys.argv:
+            SAVE_NAME = arg
+        elif opt in ('-i', '--init'):
             init = True
+            SAVE_NAME = arg
 
     if player:
         return normal_play()
     elif ai:
-        return ai_play(swap)
+        return ai_play(swap, SAVE_NAME)
     elif init:
         sure = input('Are you sure? (y/n): ')
         if sure == 'y':
@@ -86,7 +110,7 @@ def normal_play():
         done = pong.play_one_pong()
     print(" GAME OVER!!\nYou got %d points" % pong.state.points)
 
-def ai_play(swap_network):
+def ai_play(swap_network, SAVE_NAME):
     if swap_network:
         print("Swapped")
         neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, saveName = (SAVE_NAME + "_target"))
