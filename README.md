@@ -63,9 +63,12 @@ a game of pong on your own.
 
 #### To train a new network to play pong
 `> python3 main.py -i DEMO`
+
 `> python3 main.py -t DEMO`
 
 #### To watch the ai play
 `> python3 main.py -a DEMO`
+
 or to use the other network
+
 `> python3 main.py -a -s DEMO`
