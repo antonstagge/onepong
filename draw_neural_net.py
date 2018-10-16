@@ -1,3 +1,7 @@
+# All code written by Anton Stagge 2018
+# Feel free to use/edit it to what ever extent but please
+# keep the original authors name.
+
 import pygame
 import numpy as np
 

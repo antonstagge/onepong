@@ -3,6 +3,8 @@ This is a Double Deep Q-learning Network with a implementation of a small game I
 made called Onepong. Onepong is very much like pong except that it's only for
 one player. Much like playing tennis against a wall.
 
+*Anton Stagge 2018*
+
 ## File summary
 ### deep_neural_network.py
 This file contains the neural network itself. It is not dependent on any other
