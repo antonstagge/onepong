@@ -5,9 +5,23 @@ DRAWING_AREA = 500
 RADIUS = 12
 
 def draw(screen, grow, inputs, hidden, outputs):
+    """
+    Draw the values of the neural net nodes to show which nodes
+    are active when making the decision which action to take.
+    This is done by growing the pygame screen by DRAWING_AREA to the left
+    and adding the visualization of the neural net there.
+
+    screen: The screen to draw on
+    grow: whether to grow the screen or not
+    inputs: the values of the input nodes
+    hidden: the values of the hidden nodes
+    outputs: the values of the output nodes
+    """
+
     if grow:
         screen_size = screen.get_size()
         screen = pygame.display.set_mode([screen_size[0] + DRAWING_AREA, screen_size[1]])
+
     # normalize
     # new_inputs = [0.0,0.0,0.0,0.0,0.0]
     # new_inputs[0] = inputs[0]/50
@@ -41,6 +55,10 @@ def draw(screen, grow, inputs, hidden, outputs):
             draw_line(screen, start, end)
 
 def draw_nodes(screen, y_pos, nodes, positions):
+    """
+    Draws the circles on screen at y_pos with incrementing x_pos.
+    Stores the recently drawn circle position in positions buffer.
+    """
     x_pos = screen.get_size()[0] - DRAWING_AREA + first_x_pos(len(nodes))
     for x in nodes:
         color = 255*(x)
@@ -55,6 +73,11 @@ def draw_nodes(screen, y_pos, nodes, positions):
         x_pos += 3*RADIUS
 
 def draw_line(screen, start, end):
+    """
+    Draws a line from the circle at start to the circle at end.
+    Have to first shorten the line a bit so that the line is not
+    drawn over the circles.
+    """
     direction = [0,0]
     direction[0] = start[0] - end[0]
     direction[1] = start[1] - end[1]
@@ -71,6 +94,9 @@ def draw_line(screen, start, end):
 
 
 def first_x_pos(number_of_nodes):
+    """
+    Calculates and returns the x position of the first node in this layer
+    """
     return int((DRAWING_AREA - number_of_nodes*RADIUS*2 - (number_of_nodes-1)*RADIUS)/2) + RADIUS
 
 def sigmoid(outputs):
