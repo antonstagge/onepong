@@ -41,10 +41,11 @@ def usage():
 
 def main():
     """
-    This main function will either let you play the pong game yourself with -play,
-    watch the ai play the game with flags -ai (swap which net is used with -swap),
-    train the ai with flag -train
-    or innitialize the weights for training with flag -i
+    This main function will either let you play the pong game yourself with -p,
+    watch the ai play the game with flags -a (swap which net is used with -s),
+    train the ai with flag -t
+    or initialize the weights randomly for training with flag -i
+    use -h or --help to get more information about the usage. 
     """
     player = False
     train = False
