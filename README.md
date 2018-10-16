@@ -21,9 +21,10 @@ same data. One of the networks is used to predict the action to take given an
 observation, the other is used to give the value for the estimated future value
 in the Q-update function:
 
-Q(s, a<sub>t</sub>) += R + \gammma * max<sub>a</sub>Q(s', a)
+Q(s, a<sub>t</sub>) += R + gamma * max<sub>a</sub>Q(s', a)
 
-where alpha is the learning rate and gamma is the DISCOUND_FACTOR.
+where gamma is the DISCOUND_FACTOR.
+
 So basically, the live network is used to pick the action a<sub>t</sub> and
 which action a maximizes Q(s', a), but then the value of the taget networks
 Q(s', a) is used instead of the value for the live network.
@@ -55,4 +56,4 @@ are active in the process of choosing an action.
 
 ## main.py
 This file ties the onepong game together with the DQN, or simply lets you play
-a game of pong on your own. 
+a game of pong on your own.
