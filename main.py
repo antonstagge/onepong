@@ -1,6 +1,6 @@
 # All code written by Anton Stagge 2018
 # Feel free to use/edit it to what ever extent but please
-# keep the original authors name. 
+# keep the original authors name.
 
 import sys
 import getopt
@@ -28,8 +28,20 @@ EPSILON_DECAY = 0.995
 
 BATCH_SIZE = 32
 
+games = {
+    'onepong': {
+        'initialize': PlayPong,
+        'play_one_iteration': PlayPong.play_one_iteration,
+        'get_observation': PlayPong.get_observation,
+        'get_reward': PlayPong.get_reward
+    },
+}
+
+GAME = 'onepong'
+
+
 def usage():
-    string =  "There are multiple things you can do with onepong!\n"
+    string = "There are multiple things you can do with onepong!\n"
     string += "you run it by typing:\n\n"
     string += "python3 main.py [-h] [-p] [-a [-s <trial_name>] [-t <trial_name>] [-i <trial_name>]\n\n"
     string += "-h --help : shows this help message.\n\n"
@@ -39,6 +51,7 @@ def usage():
     string += "-t --train: train the neural network, updates the weights in the trial_name files\n\n"
     string += "-i --init : creates the files needed under name trial_name, and initialize the network with random weights. \n\n"
     return string
+
 
 def main():
     """
@@ -57,7 +70,8 @@ def main():
 
     argv = sys.argv[1:]
     try:
-        opts, args = getopt.getopt(argv,"hpa:st:i:",["help", "play", "ai=", "swap", "train=", "init="])
+        opts, args = getopt.getopt(
+            argv, "hpa:st:i:", ["help", "play", "ai=", "swap", "train=", "init="])
     except getopt.GetoptError:
         print(usage())
         sys.exit(2)
@@ -86,48 +100,57 @@ def main():
     elif init:
         sure = input('Are you sure? (y/n):\n')
         if sure == 'y':
-            neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, False, saveName = SAVE_NAME)
+            neural_net = deep_neural_network.network(
+                N_IN, HIDDEN, N_OUT, False, saveName=SAVE_NAME)
             neural_net.saveWeights()
-            target_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, False, saveName = (SAVE_NAME + "_target"))
-            target_net.saveWeights()
+            target_net = deep_neural_network.network(
+                N_IN, HIDDEN, N_OUT, False, saveName=SAVE_NAME)
+            target_net.saveWeights(target=True)
         return
     elif train:
         DQN.training_iteration(SAVE_NAME,
-            OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
-            N_IN, HIDDEN, N_OUT,
-            TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
-            BATCH_SIZE,
-            initialize = PlayPong,
-            play_one_iteration = PlayPong.play_one_pong,
-            get_observation = PlayPong.get_observation,
-            get_reward = PlayPong.get_reward)
+                               OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
+                               N_IN, HIDDEN, N_OUT,
+                               TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
+                               BATCH_SIZE,
+                               initialize=games[GAME]['initialize'],
+                               play_one_iteration=games[GAME]['play_one_iteration'],
+                               get_observation=games[GAME]['get_observation'],
+                               get_reward=games[GAME]['get_reward'])
         return
+
 
 def normal_play():
     # player True and draw True
-    pong = PlayPong(True, True)
+    game = games[GAME]['initialize'](True, True)
     done = False
     while not done:
-        done = pong.play_one_pong()
-    print(" GAME OVER!!\nYou got %d points" % pong.state.points)
+        done = game.play_one_iteration()
+    print(" GAME OVER!!\nYou got %d points" % game.state.points)
+
 
 def ai_play(swap_network, SAVE_NAME):
     if swap_network:
         print("Swapped")
-        neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, saveName = (SAVE_NAME + "_target"))
+        neural_net = deep_neural_network.network(
+            N_IN, HIDDEN, N_OUT, True, saveName=(SAVE_NAME + "_target"))
     else:
-        neural_net = deep_neural_network.network(N_IN, HIDDEN, N_OUT, True, saveName = SAVE_NAME)
+        neural_net = deep_neural_network.network(
+            N_IN, HIDDEN, N_OUT, True, saveName=SAVE_NAME)
     # player False and draw True
-    pong = PlayPong(False, True)
+    game = games[GAME]['initialize'](True, True)
     done = False
     grow = True
     while not done:
-        obs = pong.get_observation()
-        action = DQN.act(neural_net, obs, training = False)
-        draw_neural_net.draw(pong.screen, grow, obs, neural_net.hidden[0], neural_net.outputs[0])
+        obs = game.get_observation()
+        print(obs)
+        action = DQN.act(neural_net, obs, training=False)
+        print(action)
+        draw_neural_net.draw(game.screen, grow, obs,
+                             neural_net.hidden[0], neural_net.outputs[0])
         grow = False
-        done = pong.play_one_pong(action)
-    print(" GAME OVER!!\AI scored %d points" % pong.state.points)
+        done = game.play_one_iteration(action)
+    print(" GAME OVER!!\AI scored %d points" % game.state.points)
 
 
 if __name__ == "__main__":

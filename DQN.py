@@ -16,15 +16,16 @@ MAX_GAME_ITER = 9999999
 
 EPSILON_MIN = 0.01
 
+
 def training_iteration(
-    SAVE_NAME, OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
-    N_IN, N_HIDDEN, N_OUT,
-    TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
-    BATCH_SIZE,
-    initialize,
-    play_one_iteration,
-    get_observation,
-    get_reward):
+        SAVE_NAME, OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
+        N_IN, N_HIDDEN, N_OUT,
+        TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
+        BATCH_SIZE,
+        initialize,
+        play_one_iteration,
+        get_observation,
+        get_reward):
     """
     The ai uses Deep Q-learning with double Q-nets.
     One for net is used to make prediction and decide on actions,
@@ -55,14 +56,16 @@ def training_iteration(
     get_reward: function to return the reward for a state.
     """
     np.seterr(divide='raise', over='raise', under='warn', invalid='raise')
-    np.set_printoptions(threshold=np.nan)
+    np.set_printoptions(threshold=None)
 
-    total_amount_training_data = 0 # used for printing
+    total_amount_training_data = 0  # used for printing
 
     for train in range(0, OUTER_ITER):
         # Initialising networks
-        neural_net = deep_neural_network.network(N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName = SAVE_NAME)
-        target_net = deep_neural_network.network(N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName = (SAVE_NAME + "_target"))
+        neural_net = deep_neural_network.network(
+            N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName=SAVE_NAME)
+        target_net = deep_neural_network.network(
+            N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName=SAVE_NAME, target=True)
 
         # Sometime sync target_network
         if train % NETWORK_SYNC_FREQ == 0:
@@ -75,7 +78,7 @@ def training_iteration(
             target_net = temp
 
         # GATHER TRAINING DATA
-        memory = deque(maxlen = 2000)
+        memory = deque(maxlen=2000)
         max_reached = 0
         for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
@@ -89,7 +92,8 @@ def training_iteration(
                 action = act(neural_net, obs)
                 done = play_one_iteration(game, action)
                 reward = get_reward(game)
-                memory.append((obs, action, reward, get_observation(game), done))
+                memory.append(
+                    (obs, action, reward, get_observation(game), done))
                 accumulated_reward += reward
                 game_iters += 1
 
@@ -105,7 +109,7 @@ def training_iteration(
         devalue_rewards(memory, DISCOUND_FACTOR*0.8)
 
         # use a small batch of training data to train on
-        batch = random.sample(memory, min(len(memory),BATCH_SIZE))
+        batch = random.sample(memory, min(len(memory), BATCH_SIZE))
 
         states = np.array([each[0] for each in batch])
         next_states = np.array([each[3] for each in batch])
@@ -116,7 +120,8 @@ def training_iteration(
         # Get next state q values from target network
         next_states_q_values = target_net.forward(next_states, add_bias=True)
         # Get next state q values from live network
-        next_states_q_values_live_network = neural_net.forward(next_states, add_bias=True)
+        next_states_q_values_live_network = neural_net.forward(
+            next_states, add_bias=True)
 
         for i in range(len(batch)):
             (_, action, reward, _, is_terminal) = batch[i]
@@ -124,9 +129,11 @@ def training_iteration(
                 targets[i, action] = reward
             else:
                 # get max action based on live network
-                selected_action = np.argmax(next_states_q_values_live_network[i])
+                selected_action = np.argmax(
+                    next_states_q_values_live_network[i])
                 # use target network value
-                targets[i, action] = reward + DISCOUND_FACTOR * next_states_q_values[i, selected_action]
+                targets[i, action] = reward + DISCOUND_FACTOR * \
+                    next_states_q_values[i, selected_action]
 
         # Actually train the live network
         neural_net.train(states, targets, TR_SPEED)
@@ -152,7 +159,8 @@ def training_iteration(
     print("%d training iterations done!" % (train+1))
     print("Total amount of training data: %d" % total_amount_training_data)
 
-def act(ann, obs, training = True):
+
+def act(ann, obs, training=True):
     """
     Returns a random action when epsilon is high and training.
     Otherwise return the action that will maximize the predicted reward.
@@ -161,6 +169,7 @@ def act(ann, obs, training = True):
         return np.random.randint(0, 3)
     pred = ann.predict(obs)
     return np.argmax(pred)
+
 
 def devalue_rewards(batch, DISCOUND_FACTOR):
     """
@@ -175,14 +184,17 @@ def devalue_rewards(batch, DISCOUND_FACTOR):
         if (not batch[idx][2] == 0):
             val = batch[idx][2]*DISCOUND_FACTOR
         else:
-            batch[idx] = (batch[idx][0],batch[idx][1], val, batch[idx][3], batch[idx][4])
+            batch[idx] = (batch[idx][0], batch[idx][1],
+                          val, batch[idx][3], batch[idx][4])
         val = val*DISCOUND_FACTOR
         if abs(val) < 0.001:
             val = 0.0
+
 
 def normalize_rewards(batch):
     rew = [reward for (_, _, reward, _, _) in batch]
     mean = np.mean(rew)
     std = np.std(rew)
     for idx in range(0, len(batch)):
-        batch[idx] = (batch[idx][0],batch[idx][1], (batch[idx][2]-mean)/std, batch[idx][3],  batch[idx][4])
+        batch[idx] = (batch[idx][0], batch[idx][1], (batch[idx]
+                                                     [2]-mean)/std, batch[idx][3],  batch[idx][4])

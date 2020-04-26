@@ -1,6 +1,6 @@
 # All code written by Anton Stagge 2018
 # Feel free to use/edit it to what ever extent but please
-# keep the original authors name. 
+# keep the original authors name.
 import pygame
 import numpy as np
 
@@ -8,7 +8,7 @@ import numpy as np
 ROWS = 50
 COLUMNS = 60
 
-PAD_SIZE = 12 # has to be even
+PAD_SIZE = 12  # has to be even
 
 EMPTY = 1
 PAD = 2
@@ -27,16 +27,18 @@ MARGIN = 1
 # Set the HEIGHT and WIDTH of the screen
 WINDOW_SIZE = [COLUMNS*(WIDTH+MARGIN) + MARGIN, ROWS*(HEIGHT+MARGIN) + MARGIN]
 
+
 class State(object):
     """
     This class defines how the pong game works,
     how to move the ball and how to move the pad.
     """
+
     def __init__(self):
         self._state = np.zeros((ROWS, COLUMNS), dtype=int)
-        self._position = (int(ROWS/4),int(COLUMNS/2))
+        self._position = (int(ROWS/4), int(COLUMNS/2))
         start_dir_v = [Movement.d_240, Movement.d_270, Movement.d_300]
-        self._direction = start_dir_v[np.random.randint(0,len(start_dir_v))]
+        self._direction = start_dir_v[np.random.randint(0, len(start_dir_v))]
         self._state[self._position[0]][self._position[1]] = BALL
         self._pad = round(COLUMNS/2 - PAD_SIZE/2)
         for i in range(0, PAD_SIZE):
@@ -70,8 +72,8 @@ class State(object):
     def _is_reg_move(self):
         """ True if the ball is still inside the map """
         new_pos = self._get_new_pos()
-        return (new_pos[0] < ROWS -1 and new_pos[0] >= 0
-            and new_pos[1] < COLUMNS and new_pos[1] >= 0)
+        return (new_pos[0] < ROWS - 1 and new_pos[0] >= 0
+                and new_pos[1] < COLUMNS and new_pos[1] >= 0)
 
     def _move_ball_reg(self):
         """ Move the ball to the next position inside the map """
@@ -84,7 +86,7 @@ class State(object):
         """ True if ball is about to bounce on a wall or the ceiling """
         new_pos = self._get_new_pos()
         return ((new_pos[1] >= COLUMNS or new_pos[1] < 0
-            or new_pos[0] < 0) and new_pos[0] < ROWS-1)
+                 or new_pos[0] < 0) and new_pos[0] < ROWS-1)
 
     def _is_pad_bounce(self):
         """ True if ball is about to bounce on the PAD """
@@ -106,15 +108,17 @@ class State(object):
         # change direction
         if new_pos[1] < 0 or new_pos[1] > COLUMNS-1:
             # wall bounce
-            self._direction = (self._direction[0],-1*self._direction[1])
+            self._direction = (self._direction[0], -1*self._direction[1])
         if new_pos[0] < 0:
             # ceiling bounce
-            self._direction = (-1*self._direction[0],self._direction[1])
+            self._direction = (-1*self._direction[0], self._direction[1])
 
         if pad and new_pos[0] > ROWS-2:
             # special direction change when bouncing on PAD
-            dir_in = [Movement.d_210, Movement.d_225, Movement.d_240, Movement.d_270, Movement.d_300, Movement.d_315, Movement.d_330]
-            dir_out = [Movement.d_150, Movement.d_135, Movement.d_120, Movement.d_90, Movement.d_60, Movement.d_45, Movement.d_30]
+            dir_in = [Movement.d_210, Movement.d_225, Movement.d_240,
+                      Movement.d_270, Movement.d_300, Movement.d_315, Movement.d_330]
+            dir_out = [Movement.d_150, Movement.d_135, Movement.d_120,
+                       Movement.d_90, Movement.d_60, Movement.d_45, Movement.d_30]
             dir_idx = -1
             for d in range(0, len(dir_in)):
                 if self._direction == dir_in[d]:
@@ -166,7 +170,7 @@ class State(object):
             # btn now
             new_pos = (ROWS-4, new_pos[1])
 
-        #if pad:
+        # if pad:
             # fixed new_pos when bouncing on pad
             #new_pos = (ROWS-2, new_pos[1])
 
@@ -191,10 +195,12 @@ class State(object):
                     self._state[self._state.shape[0]-1][self._pad + i] = PAD
         elif movement == Movement.PAD_L:
             if self._pad > 0:
-                self._state[self._state.shape[0]-1][self._pad + (PAD_SIZE-1)] = EMPTY
+                self._state[self._state.shape[0] -
+                            1][self._pad + (PAD_SIZE-1)] = EMPTY
                 self._pad -= 1
                 for i in range(0, PAD_SIZE):
                     self._state[self._state.shape[0]-1][self._pad + i] = PAD
+
 
 class Movement():
     """
@@ -229,8 +235,9 @@ class PlayPong(object):
     """
     Run a game of pong.
     """
+
     def __init__(self, player=False, draw=False):
-        self.player = player # if False the AI is playing
+        self.player = player  # if False the AI is playing
         self.draw = draw
         self.done = False
         self.state = State()
@@ -246,7 +253,7 @@ class PlayPong(object):
             # Used to manage how fast the screen updates
             self.clock = pygame.time.Clock()
 
-    def play_one_pong(self, action = None):
+    def play_one_iteration(self, action=None):
         """
         Run one iteration of the game,
         if player you draw and take input
@@ -255,9 +262,11 @@ class PlayPong(object):
         """
         done_draw = False
         if self.player:
-            done_draw = draw_and_play(self.state, self.screen, self.clock, self.font)
+            done_draw = draw_and_play(
+                self.state, self.screen, self.clock, self.font)
         elif self.draw:
-            done_draw = draw_only(self.state, self.screen, self.clock, self.font)
+            done_draw = draw_only(self.state, self.screen,
+                                  self.clock, self.font)
 
         if action is not None and not self.player:
             self.state.move_pad(action)
@@ -274,9 +283,9 @@ class PlayPong(object):
         """
         state = self.state
         obs = np.array([state._position[0], state._position[1],
-            state._direction[0],
-            state._direction[1],
-            state._pad])
+                        state._direction[0],
+                        state._direction[1],
+                        state._pad])
         return obs
 
     def get_reward(self):
@@ -286,6 +295,7 @@ class PlayPong(object):
         elif self.done:
             reward = -1
         return reward
+
 
 def draw_and_play(s, screen, clock, font):
     """ Take input from keyboard for PAD then draw the game"""
@@ -314,11 +324,12 @@ def draw_and_play(s, screen, clock, font):
 
     actual_draw(s, screen, clock, font)
 
+
 def actual_draw(s, screen, clock, font):
     """ Draw the game """
 
     # Draw the state
-    for row in range(0,ROWS):
+    for row in range(0, ROWS):
         for column in range(0, COLUMNS):
             color = WHITE
             if s._state[row][column] == BALL:
@@ -332,13 +343,13 @@ def actual_draw(s, screen, clock, font):
                               WIDTH,
                               HEIGHT])
 
-
     text_id = font.render(("Points: " + str(s.points)), False, (0, 0, 0))
     screen.blit(text_id, (0, 0))
     # Limit to 6 frames per second
     clock.tick(FPS)
     pygame.display.flip()
     return False
+
 
 def draw_only(s, screen, clock, font):
     """ Dont't take keyboard input for pad and just draw """
