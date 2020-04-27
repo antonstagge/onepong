@@ -6,16 +6,17 @@ import datetime
 import pygame
 import sys
 import numpy as np
-import deep_neural_network
 from collections import deque
 import random
 import matplotlib.pyplot as plt
+from timeit import default_timer as timer
 
 BETA = 0.99
-MAX_GAME_ITER = 9999999
+MAX_GAME_ITER = 10000
 
 
 def training_iteration(
+        network,
         SAVE_NAME, OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
         N_IN, N_HIDDEN, N_OUT,
         TR_SPEED, DISCOUND_FACTOR,
@@ -59,13 +60,15 @@ def training_iteration(
 
     total_amount_training_data = 0  # used for printing
 
-    for epoch in range(OUTER_ITER):
-        # Initialising networks
-        neural_net = deep_neural_network.network(
-            N_IN, N_HIDDEN, N_OUT, load=True, beta=BETA, saveName=SAVE_NAME)
-        target_net = deep_neural_network.network(
-            N_IN, N_HIDDEN, N_OUT, load=True, beta=BETA, saveName=SAVE_NAME, target=True)
+    # Initialising networks
+    # Why load from disk every epoch?
+    neural_net = network(
+        N_IN, N_HIDDEN, N_OUT, load=True, eta=TR_SPEED, beta=BETA, saveName=SAVE_NAME)
+    target_net = network(
+        N_IN, N_HIDDEN, N_OUT, load=True, eta=TR_SPEED, beta=BETA, saveName=SAVE_NAME, target=True)
 
+    for epoch in range(OUTER_ITER):
+        start = timer()
         # Sometime sync target_network
         if epoch % NETWORK_SYNC_FREQ == 0:
             target_net.set_weights(neural_net.get_weights())
@@ -77,7 +80,7 @@ def training_iteration(
             target_net = temp
 
         # GATHER TRAINING DATA
-        memory = deque(maxlen=2000)
+        memory = deque(maxlen=MAX_GAME_ITER)
         max_reached = 0
         for t in range(0, NUMBER_OF_PLAYS):
             # Initialize game
@@ -135,7 +138,7 @@ def training_iteration(
                     next_states_q_values[i, selected_action]
 
         # Actually train the live network
-        neural_net.train(states, targets, TR_SPEED)
+        neural_net.train(states, targets)
 
         # update epsilons
         if neural_net.epsilon > EPSILON_MIN:

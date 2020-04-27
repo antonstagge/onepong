@@ -12,7 +12,7 @@ import os
 class network:
     """ A neural network"""
 
-    def __init__(self, n_in, n_hidden, n_out, load=False, beta=1, momentum=0.95, saveName="Weights", target=False):
+    def __init__(self, n_in, n_hidden, n_out, load=False, eta=0.001, beta=1, momentum=0.95, saveName="Weights", target=False):
         """ Constructor """
         # Set up network size
         self.nin = n_in
@@ -20,6 +20,7 @@ class network:
         self.ndata = 1
         self.nhidden = n_hidden
 
+        self.eta = eta
         self.beta = beta
         self.momentum = momentum
 
@@ -35,7 +36,7 @@ class network:
                 self.nhidden+1, self.nout)-0.5)*2/sqrt(self.nhidden)
             self.epsilon = 1.0
 
-    def train(self, inputs, targets, eta):
+    def train(self, inputs, targets):
         """ Train the thing """
         self.ndata = shape(inputs)[0]
         # Add the inputs that match the bias node
@@ -53,11 +54,11 @@ class network:
             deltah = self.hidden*(1.0-self.hidden) * \
                 (dot(deltao, transpose(self.weights2)))
 
-            updatew1 = eta * \
+            updatew1 = self.eta * \
                 (dot(transpose(inputs),
                      deltah[:, :-1])) + self.momentum*updatew1
-            updatew2 = eta*(dot(transpose(self.hidden), deltao)
-                            ) + self.momentum*updatew2
+            updatew2 = self.eta*(dot(transpose(self.hidden), deltao)
+                                 ) + self.momentum*updatew2
 
             self.weights1 += updatew1
             self.weights2 += updatew2

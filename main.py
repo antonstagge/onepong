@@ -8,11 +8,15 @@ import numpy as np
 from onepong import *
 from snake import *
 import deep_neural_network
+import keras_nn
 import draw_neural_net
 import DQN
 from collections import deque
 
-OUTER_ITER = 500
+#network = deep_neural_network.network
+network = keras_nn.KerasNetwork
+
+OUTER_ITER = 1000
 NUMBER_OF_PLAYS = 50
 NETWORK_SYNC_FREQ = 100
 MAX_POINTS = 200
@@ -25,8 +29,7 @@ DISCOUND_FACTOR = 0.95
 EPSILON_MIN = 0.01
 EPSILON_DECAY = 0.995
 
-BATCH_SIZE = 32
-BATCH_SIZE = 64
+BATCH_SIZE = 32 * 2 * 2 * 2
 
 games = {
     'onepong': {
@@ -114,15 +117,16 @@ def main():
     elif init:
         sure = input('Are you sure? (y/n):\n')
         if sure == 'y':
-            neural_net = deep_neural_network.network(
+            neural_net = network(
                 N_IN, HIDDEN, N_OUT, False, saveName=SAVE_NAME)
             neural_net.saveWeights()
-            target_net = deep_neural_network.network(
+            target_net = network(
                 N_IN, HIDDEN, N_OUT, False, saveName=SAVE_NAME)
             target_net.saveWeights(target=True)
         return
     elif train:
-        DQN.training_iteration(SAVE_NAME,
+        DQN.training_iteration(network,
+                               SAVE_NAME,
                                OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
                                N_IN, HIDDEN, N_OUT,
                                TR_SPEED, DISCOUND_FACTOR,
@@ -137,7 +141,7 @@ def main():
 
 def normal_play():
     # player True and draw True
-    game = games[GAME]['initialize'](True, True)
+    game = games[GAME]['initialize'](player=True, draw=True)
     done = False
     while not done:
         done = game.play_one_iteration()
@@ -147,7 +151,7 @@ def normal_play():
 def ai_play(swap_network, SAVE_NAME):
     if swap_network:
         print("Swapped")
-    neural_net = deep_neural_network.network(
+    neural_net = network(
         N_IN, HIDDEN, N_OUT, True, saveName=(SAVE_NAME), target=swap_network)
     # player False and draw True
     game = games[GAME]['initialize'](player=False, draw=True)
