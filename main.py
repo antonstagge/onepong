@@ -6,19 +6,18 @@ import sys
 import getopt
 import numpy as np
 from onepong import *
+from snake import *
 import deep_neural_network
 import draw_neural_net
 import DQN
 from collections import deque
 
-OUTER_ITER = 10000
-NUMBER_OF_PLAYS = 20
+OUTER_ITER = 500
+NUMBER_OF_PLAYS = 50
 NETWORK_SYNC_FREQ = 100
-MAX_POINTS = 50
+MAX_POINTS = 200
 
-N_IN = 5
 HIDDEN = 10
-N_OUT = 3
 
 TR_SPEED = 0.001
 DISCOUND_FACTOR = 0.95
@@ -27,6 +26,7 @@ EPSILON_MIN = 0.01
 EPSILON_DECAY = 0.995
 
 BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 games = {
     'onepong': {
@@ -35,9 +35,23 @@ games = {
         'get_observation': PlayPong.get_observation,
         'get_reward': PlayPong.get_reward
     },
+    'snake': {
+        'initialize': PlaySnake,
+        'play_one_iteration': PlaySnake.play_one_iteration,
+        'get_observation': PlaySnake.get_observation,
+        'get_reward': PlaySnake.get_reward
+    },
 }
 
-GAME = 'onepong'
+#GAME = 'onepong'
+GAME = 'snake'
+
+if GAME == 'onepong':
+    N_IN = 5
+    N_OUT = 3
+elif GAME == 'snake':
+    N_IN = 12
+    N_OUT = 4
 
 
 def usage():
@@ -111,7 +125,8 @@ def main():
         DQN.training_iteration(SAVE_NAME,
                                OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
                                N_IN, HIDDEN, N_OUT,
-                               TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
+                               TR_SPEED, DISCOUND_FACTOR,
+                               EPSILON_DECAY, EPSILON_MIN,
                                BATCH_SIZE,
                                initialize=games[GAME]['initialize'],
                                play_one_iteration=games[GAME]['play_one_iteration'],
@@ -132,25 +147,24 @@ def normal_play():
 def ai_play(swap_network, SAVE_NAME):
     if swap_network:
         print("Swapped")
-        neural_net = deep_neural_network.network(
-            N_IN, HIDDEN, N_OUT, True, saveName=(SAVE_NAME + "_target"))
-    else:
-        neural_net = deep_neural_network.network(
-            N_IN, HIDDEN, N_OUT, True, saveName=SAVE_NAME)
+    neural_net = deep_neural_network.network(
+        N_IN, HIDDEN, N_OUT, True, saveName=(SAVE_NAME), target=swap_network)
     # player False and draw True
-    game = games[GAME]['initialize'](True, True)
+    game = games[GAME]['initialize'](player=False, draw=True)
     done = False
     grow = True
     while not done:
         obs = game.get_observation()
         print(obs)
         action = DQN.act(neural_net, obs, training=False)
-        print(action)
+        print("Action choosen:", action)
         draw_neural_net.draw(game.screen, grow, obs,
                              neural_net.hidden[0], neural_net.outputs[0])
         grow = False
         done = game.play_one_iteration(action)
-    print(" GAME OVER!!\AI scored %d points" % game.state.points)
+    print(" GAME OVER!!\nAI scored %d points" % game.state.points)
+    while True:
+        pass
 
 
 if __name__ == "__main__":

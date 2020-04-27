@@ -27,7 +27,6 @@ class network:
         self.saveName = saveName
         if load:
             self.loadWeights(target=target)
-
         else:
             # new network
             self.weights1 = (random.rand(

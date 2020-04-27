@@ -14,13 +14,12 @@ import matplotlib.pyplot as plt
 BETA = 0.99
 MAX_GAME_ITER = 9999999
 
-EPSILON_MIN = 0.01
-
 
 def training_iteration(
         SAVE_NAME, OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
         N_IN, N_HIDDEN, N_OUT,
-        TR_SPEED, DISCOUND_FACTOR, EPSILON_DECAY,
+        TR_SPEED, DISCOUND_FACTOR,
+        EPSILON_DECAY, EPSILON_MIN,
         BATCH_SIZE,
         initialize,
         play_one_iteration,
@@ -60,15 +59,15 @@ def training_iteration(
 
     total_amount_training_data = 0  # used for printing
 
-    for train in range(0, OUTER_ITER):
+    for epoch in range(OUTER_ITER):
         # Initialising networks
         neural_net = deep_neural_network.network(
-            N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName=SAVE_NAME)
+            N_IN, N_HIDDEN, N_OUT, load=True, beta=BETA, saveName=SAVE_NAME)
         target_net = deep_neural_network.network(
-            N_IN, N_HIDDEN, N_OUT, True, beta=BETA, saveName=SAVE_NAME, target=True)
+            N_IN, N_HIDDEN, N_OUT, load=True, beta=BETA, saveName=SAVE_NAME, target=True)
 
         # Sometime sync target_network
-        if train % NETWORK_SYNC_FREQ == 0:
+        if epoch % NETWORK_SYNC_FREQ == 0:
             target_net.set_weights(neural_net.get_weights())
 
         # randomly swap the target and live networks
@@ -145,18 +144,18 @@ def training_iteration(
 
         # Save weights
         neural_net.saveWeights()
-        target_net.saveWeights()
+        target_net.saveWeights(target=True)
 
         total_amount_training_data += len(batch)
         print(" --------------------------------------------------")
-        print("One training iteration done and saved!   Number %d" % (train+1))
+        print("One training iteration done and saved!   Number %d" % (epoch+1))
         print("Epsilon now sits at: %.5f" % neural_net.epsilon)
         print("Max points reached was: %d" % max_reached)
         print(" --------------------------------------------------")
         print("")
 
     print("")
-    print("%d training iterations done!" % (train+1))
+    print("%d training iterations done!" % (epoch+1))
     print("Total amount of training data: %d" % total_amount_training_data)
 
 
@@ -166,7 +165,7 @@ def act(ann, obs, training=True):
     Otherwise return the action that will maximize the predicted reward.
     """
     if np.random.rand() <= ann.epsilon and training:
-        return np.random.randint(0, 3)
+        return np.random.randint(0, ann.nout)
     pred = ann.predict(obs)
     return np.argmax(pred)
 
