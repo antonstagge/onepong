@@ -13,13 +13,13 @@ import draw_neural_net
 import DQN
 from collections import deque
 
-#network = deep_neural_network.network
+#network = deep_neural_network.Network
 network = keras_nn.KerasNetwork
 
 OUTER_ITER = 1000
 NUMBER_OF_PLAYS = 50
 NETWORK_SYNC_FREQ = 100
-MAX_POINTS = 200
+MAX_POINTS = 100
 
 HIDDEN = 10
 
@@ -27,9 +27,9 @@ TR_SPEED = 0.001
 DISCOUND_FACTOR = 0.95
 
 EPSILON_MIN = 0.01
-EPSILON_DECAY = 0.995
+EPSILON_DECAY = 0.95
 
-BATCH_SIZE = 32 * 2 * 2 * 2
+BATCH_SIZE = 64
 
 games = {
     'onepong': {
@@ -117,19 +117,21 @@ def main():
     elif init:
         sure = input('Are you sure? (y/n):\n')
         if sure == 'y':
-            neural_net = network(
-                N_IN, HIDDEN, N_OUT, False, saveName=SAVE_NAME)
-            neural_net.saveWeights()
-            target_net = network(
-                N_IN, HIDDEN, N_OUT, False, saveName=SAVE_NAME)
-            target_net.saveWeights(target=True)
+            network(N_IN, HIDDEN, N_OUT, learning_rate=TR_SPEED, load=False,
+                    saveName=SAVE_NAME).saveWeights()
+            network(N_IN, HIDDEN, N_OUT, learning_rate=TR_SPEED, load=False,
+                    saveName=SAVE_NAME, target=True).saveWeights()
         return
     elif train:
-        DQN.training_iteration(network,
-                               SAVE_NAME,
-                               OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
-                               N_IN, HIDDEN, N_OUT,
-                               TR_SPEED, DISCOUND_FACTOR,
+        # Initialising networks
+        neural_net = network(
+            load=True, learning_rate=TR_SPEED, saveName=SAVE_NAME)
+        target_net = network(load=True, learning_rate=TR_SPEED,
+                             saveName=SAVE_NAME, target=True)
+        DQN.training_iteration(neural_net, target_net,
+                               OUTER_ITER, NUMBER_OF_PLAYS,
+                               MAX_POINTS, NETWORK_SYNC_FREQ,
+                               DISCOUND_FACTOR,
                                EPSILON_DECAY, EPSILON_MIN,
                                BATCH_SIZE,
                                initialize=games[GAME]['initialize'],
@@ -152,7 +154,7 @@ def ai_play(swap_network, SAVE_NAME):
     if swap_network:
         print("Swapped")
     neural_net = network(
-        N_IN, HIDDEN, N_OUT, True, saveName=(SAVE_NAME), target=swap_network)
+        N_IN, HIDDEN, N_OUT, load=True, saveName=(SAVE_NAME), target=swap_network)
     # player False and draw True
     game = games[GAME]['initialize'](player=False, draw=True)
     done = False
@@ -162,8 +164,7 @@ def ai_play(swap_network, SAVE_NAME):
         print(obs)
         action = DQN.act(neural_net, obs, training=False)
         print("Action choosen:", action)
-        draw_neural_net.draw(game.screen, grow, obs,
-                             neural_net.hidden[0], neural_net.outputs[0])
+        #draw_neural_net.draw(game.screen, grow, obs, neural_net.hidden[0], neural_net.outputs[0])
         grow = False
         done = game.play_one_iteration(action)
     print(" GAME OVER!!\nAI scored %d points" % game.state.points)

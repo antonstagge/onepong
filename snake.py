@@ -64,13 +64,14 @@ class State():
                 # make snake longer
                 self._pos_body.insert(0, last_spot)
                 self.set_coin_pos()
-
+            return False
         else:
             return True
 
     def set_coin_pos(self):
         self._coin = (random.randint(0, ROWS - 1),
                       random.randint(0, COLUMNS - 1))
+        #self._coin = (1, 1)
         self._state[self._coin[0]][self._coin[1]] = COIN
 
     # Returns the snakes next position
@@ -161,7 +162,6 @@ class PlaySnake():
         self.done = done_draw or done_play or done_run
         self.last_points = self.current_points
         self.current_points = self.state.points
-
         return self.done
 
     def get_observation(self):

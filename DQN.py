@@ -11,15 +11,14 @@ import random
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 
-BETA = 0.99
 MAX_GAME_ITER = 10000
 
 
 def training_iteration(
-        network,
-        SAVE_NAME, OUTER_ITER, NUMBER_OF_PLAYS, MAX_POINTS, NETWORK_SYNC_FREQ,
-        N_IN, N_HIDDEN, N_OUT,
-        TR_SPEED, DISCOUND_FACTOR,
+        neural_net, target_net,
+        OUTER_ITER, NUMBER_OF_PLAYS,
+        MAX_POINTS, NETWORK_SYNC_FREQ,
+        DISCOUND_FACTOR,
         EPSILON_DECAY, EPSILON_MIN,
         BATCH_SIZE,
         initialize,
@@ -35,17 +34,11 @@ def training_iteration(
     First you gather a lot if data by simply playing the game,
     then you pick BATCH_SIZE of this data to use for training.
 
-    SAVE_NAME: the file name of the saved weights
     OUTER_ITER: the amount of time to perform the outer training loop
     NUMBER_OF_PLAYS: the amount of time to play the game in each outer training loop
     MAX_POINTS: when the AI reaches MAX_POINTS it consider itself a master
     NETWORK_SYNC_FREQ: how often to sync target and live network
 
-    N_IN: how many input nodes
-    N_HIDDEN: how many hidden nodes
-    N_OUT: how many output nodes
-
-    TR_SPEED: how much to take into account updates for weights (use 0.001)
     DISCOUND_FACTOR: how much to discout rewards and next q values (use 0.95)
     EPSILON_DECAY: how much to lower epsilon by (use 0.995)
 
@@ -60,12 +53,8 @@ def training_iteration(
 
     total_amount_training_data = 0  # used for printing
 
-    # Initialising networks
-    # Why load from disk every epoch?
-    neural_net = network(
-        N_IN, N_HIDDEN, N_OUT, load=True, eta=TR_SPEED, beta=BETA, saveName=SAVE_NAME)
-    target_net = network(
-        N_IN, N_HIDDEN, N_OUT, load=True, eta=TR_SPEED, beta=BETA, saveName=SAVE_NAME, target=True)
+    memories = [deque(maxlen=10000)
+                for i in range(NUMBER_OF_PLAYS)]
 
     for epoch in range(OUTER_ITER):
         start = timer()
@@ -78,67 +67,104 @@ def training_iteration(
             temp = neural_net
             neural_net = target_net
             target_net = temp
+            # maybe change is_target
 
         # GATHER TRAINING DATA
-        memory = deque(maxlen=MAX_GAME_ITER)
-        max_reached = 0
-        for t in range(0, NUMBER_OF_PLAYS):
-            # Initialize game
-            game = initialize()
 
-            done = False
-            game_iters = 0
-            accumulated_reward = 0
-            while (not done and game_iters < MAX_GAME_ITER):
-                obs = get_observation(game)
-                action = act(neural_net, obs)
-                done = play_one_iteration(game, action)
-                reward = get_reward(game)
-                memory.append(
-                    (obs, action, reward, get_observation(game), done))
-                accumulated_reward += reward
-                game_iters += 1
+        games = [initialize() for i in range(NUMBER_OF_PLAYS)]
 
-            if accumulated_reward > max_reached:
-                max_reached = accumulated_reward
+        iters = 0  # synced
+        dones = [False] * NUMBER_OF_PLAYS
+        acc_rews = [1] * NUMBER_OF_PLAYS  # 1 to count points not reward
 
-            # Stop training when AI reaches MAX_POINTS in a game
-            if max_reached > MAX_POINTS:
-                print("Reached more than 50 points training is complete!")
-                exit()
+        while not all(dones) and iters < MAX_GAME_ITER:
+            observations = np.zeros((NUMBER_OF_PLAYS, neural_net.nin))
 
-        # REPLAY
-        devalue_rewards(memory, DISCOUND_FACTOR*0.8)
+            for i in range(NUMBER_OF_PLAYS):
+                if not dones[i]:
+                    observations[i] = games[i].get_observation()
 
-        # use a small batch of training data to train on
-        batch = random.sample(memory, min(len(memory), BATCH_SIZE))
-
-        states = np.array([each[0] for each in batch])
-        next_states = np.array([each[3] for each in batch])
-
-        # set targets to predicted outputs so that we only affect the action
-        # that we took.
-        targets = neural_net.forward(states, add_bias=True)
-        # Get next state q values from target network
-        next_states_q_values = target_net.forward(next_states, add_bias=True)
-        # Get next state q values from live network
-        next_states_q_values_live_network = neural_net.forward(
-            next_states, add_bias=True)
-
-        for i in range(len(batch)):
-            (_, action, reward, _, is_terminal) = batch[i]
-            if is_terminal:
-                targets[i, action] = reward
+            if np.random.rand() <= neural_net.epsilon:
+                actions = np.random.randint(
+                    0, high=neural_net.nout, size=NUMBER_OF_PLAYS)
             else:
-                # get max action based on live network
-                selected_action = np.argmax(
-                    next_states_q_values_live_network[i])
-                # use target network value
-                targets[i, action] = reward + DISCOUND_FACTOR * \
-                    next_states_q_values[i, selected_action]
+                actions = neural_net.forward(observations, add_bias=True)
+                actions = np.argmax(actions, axis=1)
 
-        # Actually train the live network
-        neural_net.train(states, targets)
+            dones_prel = [games[i].play_one_iteration(action=actions[i])
+                          if not dones[i] else True
+                          for i in range(NUMBER_OF_PLAYS)]
+
+            rewards = [games[i].get_reward()
+                       if not dones[i] else 0
+                       for i in range(NUMBER_OF_PLAYS)]
+
+            acc_rews = [(acc_rews[i] + rewards[i])
+                        if not dones[i] else acc_rews[i]
+                        for i in range(NUMBER_OF_PLAYS)]
+
+            for i in range(NUMBER_OF_PLAYS):
+                if not dones[i]:
+                    memories[i].append(
+                        (observations[i], actions[i], rewards[i],
+                         games[i].get_observation(), dones_prel[i])
+                    )
+            iters += 1
+
+            if any([len(m) < BATCH_SIZE for m in memories]):
+                continue
+
+            states_full = np.empty((0, neural_net.nin))
+            targets_full = np.empty((0, neural_net.nout))
+            # train on each game seperately
+            for i in range(NUMBER_OF_PLAYS):
+
+                if dones[i]:
+                    continue
+
+                memory = memories[i]
+                # REPLAY
+                replay_rewards = devalue_rewards(memory, DISCOUND_FACTOR*0.8)
+                # use a small batch of training data to train on
+                choice = np.random.choice(len(memory), BATCH_SIZE)
+                #batch = random.sample(memory, min(len(memory), BATCH_SIZE))
+                batch = [memory[c] for c in choice]
+                batch_rewards = [replay_rewards[c] for c in choice]
+
+                states = np.array([each[0] for each in batch])
+                next_states = np.array([each[3] for each in batch])
+
+                # set targets to predicted outputs so that we only affect the action
+                # that we took.
+                # Get next state q values from live network in the same step
+                comb = np.append(states, next_states, axis=0)
+                comb_targets = neural_net.forward(comb, add_bias=True)
+                targets = comb_targets[:states.shape[0]]
+                next_states_q_values_live_network = comb_targets[states.shape[0]:]
+                # Get next state q values from target network
+                next_states_q_values = target_net.forward(
+                    next_states, add_bias=True)
+
+                for i in range(len(batch)):
+                    (_, action, _, _, is_terminal) = batch[i]
+                    reward = batch_rewards[i]
+                    if is_terminal:
+                        targets[i, action] = reward
+                    else:
+                        # get max action based on live network
+                        selected_action = np.argmax(
+                            next_states_q_values_live_network[i])
+                        # use target network value
+                        targets[i, action] = reward + DISCOUND_FACTOR * \
+                            next_states_q_values[i, selected_action]
+
+                states_full = np.append(states_full, states, axis=0)
+                targets_full = np.append(targets_full, targets, axis=0)
+
+            # Actually train the live network
+            neural_net.train(states_full, targets_full, BATCH_SIZE)
+            sys.stdout.write('Game iteration count %d\r' % iters)
+            dones = dones_prel
 
         # update epsilons
         if neural_net.epsilon > EPSILON_MIN:
@@ -147,13 +173,15 @@ def training_iteration(
 
         # Save weights
         neural_net.saveWeights()
-        target_net.saveWeights(target=True)
+        target_net.saveWeights()
 
         total_amount_training_data += len(batch)
         print(" --------------------------------------------------")
         print("One training iteration done and saved!   Number %d" % (epoch+1))
         print("Epsilon now sits at: %.5f" % neural_net.epsilon)
-        print("Max points reached was: %d" % max_reached)
+        print("Max points reached was: %d" % np.max(acc_rews))
+        print("Mean points: %.3f" % np.mean(acc_rews))
+        print("Time: ", timer() - start)
         print(" --------------------------------------------------")
         print("")
 
@@ -180,17 +208,19 @@ def devalue_rewards(batch, DISCOUND_FACTOR):
     ex. [0, 0, 0, 0, 0, R]
      => [R*d^5, R*d^4, R*d^3, R*d^2, R*d, R]
     """
+    replay_rewards = []
     val = 0
     for i in range(0, len(batch)):
         idx = len(batch)-1-i
         if (not batch[idx][2] == 0):
             val = batch[idx][2]*DISCOUND_FACTOR
+            replay_rewards.insert(0, batch[idx][2])
         else:
-            batch[idx] = (batch[idx][0], batch[idx][1],
-                          val, batch[idx][3], batch[idx][4])
+            replay_rewards.insert(0, val)
         val = val*DISCOUND_FACTOR
         if abs(val) < 0.001:
             val = 0.0
+    return replay_rewards
 
 
 def normalize_rewards(batch):

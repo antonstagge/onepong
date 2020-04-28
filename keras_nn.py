@@ -1,44 +1,69 @@
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, RMSprop, SGD
+from tensorflow.keras import backend as K
+from tensorflow.keras.losses import mean_squared_error
 import numpy as np
 import os
+
+
+def special_loss(y_true, y_pred):
+    # l = K.mean((y_true - y_pred) /
+    #            K.cast(K.shape(y_true)[0], 'float32'), axis=1)
+    l = mean_squared_error(y_true, y_pred)
+    # print(t)
+    # print(l)
+    # K.print_tensor(t)
+    return l
 
 
 class KerasNetwork:
     """ A neural network"""
 
-    def __init__(self, n_in, n_hidden, n_out, eta=0.001, load=False, beta=1, momentum=0.95, saveName="Weights", target=False):
+    def __init__(self,
+                 n_in=None, n_hidden=None, n_out=None,
+                 learning_rate=0.001,
+                 saveName="Weights",
+                 target=False,
+                 load=False,
+                 **kwargs):
         """ Constructor """
-        # Set up network size
-        self.nin = n_in
-        self.nout = n_out
-        self.nhidden = n_hidden
-
-        self.eta = eta
-        self.beta = beta
-        self.momentum = momentum
+        self.learning_rate = learning_rate
+        self.is_target_network = target
+        self.saveName = saveName
 
         # Initialise network
-        self.saveName = saveName
         if load:
-            self.loadWeights(target=target)
+            self.loadWeights()
+            self.nin = self._model.layers[0].input_shape[-1]
+            self.nhidden = self._model.layers[0].output_shape[-1]
+            self.nout = self._model.layers[-1].output_shape[-1]
         else:
+            # Set up network size
+            assert all([x != None for x in [n_in, n_out, n_hidden]])
+            self.nin = n_in
+            self.nout = n_out
+            self.nhidden = n_hidden
             self.epsilon = 1.0
+
             self._model = Sequential([
                 Dense(self.nhidden, input_dim=self.nin, activation='sigmoid'),
-                Dense(self.nout, activation='linear')
+                Dense(self.nout, activation=None)
             ])
-            self._model.compile(
-                loss='categorical_crossentropy', optimizer=Adam(learning_rate=self.eta))
+            #opt = RMSprop(learning_rate=self.learning_rate)
+            #opt = SGD(learning_rate=self.learning_rate, momentum=self.momentum)
+            opt = Adam(learning_rate=self.learning_rate)
+            self._model.compile(optimizer=opt, loss='mse')
 
-    def train(self, inputs, targets):
-        self._model.fit(inputs, targets)
+    def train(self, inputs, targets, batch_size):
+        self._model.fit(inputs, targets, epochs=5,
+                        verbose=0, batch_size=batch_size)
+        # for i in range(50):
+        # self._model.train_on_batch(inputs, targets)
 
     def forward(self, inputs, add_bias=None):
         """ Predict, add_bias is a NOP """
-        out = self._model.predict(inputs)
-        return out
+        return self._model(inputs).numpy()
 
     def predict(self, input):
         """ Just as forward but with only one vector  """
@@ -46,21 +71,22 @@ class KerasNetwork:
         out = self._model.predict(inputs)
         return out[0]
 
-    def saveWeights(self, target=False):
+    def saveWeights(self):
         root_name = 'weights/keras/' + self.saveName
         if not os.path.isdir(root_name):
             os.mkdir(root_name)
         root_name += '/'
-        if target:
+        if self.is_target_network:
             root_name += 't_'
         self._model.save(root_name + 'model.h5')
         np.save(root_name + 'epsilon' + '.npy', self.epsilon)
 
-    def loadWeights(self, target=False):
+    def loadWeights(self):
         root_name = 'weights/keras/' + self.saveName + '/'
-        if target:
+        if self.is_target_network:
             root_name += 't_'
-        self._model = load_model(root_name + 'model.h5')
+        self._model = load_model(
+            root_name + 'model.h5', custom_objects={'special_loss': special_loss})
         self.epsilon = np.load(root_name + 'epsilon' + '.npy')
 
     def get_weights(self):
