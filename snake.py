@@ -69,8 +69,11 @@ class State():
             return True
 
     def set_coin_pos(self):
-        self._coin = (random.randint(0, ROWS - 1),
-                      random.randint(0, COLUMNS - 1))
+        while True:
+            self._coin = (random.randint(0, ROWS - 1),
+                          random.randint(0, COLUMNS - 1))
+            if self._coin not in self._pos_body and self._coin != self._pos_head:
+                break
         #self._coin = (1, 1)
         self._state[self._coin[0]][self._coin[1]] = COIN
 
