@@ -50,7 +50,7 @@ class State():
         self.set_coin_pos()
         self._dir = random.choice(movements)
         self.points = 0
-        self._life = 200
+        self._life = 50
 
     def run(self):
         """ run one iteration of the GAME """
