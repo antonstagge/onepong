@@ -11,7 +11,8 @@ COLUMNS = 30
 
 EMPTY = 0
 SNAKE = 1
-COIN = 2
+HEAD = 2
+COIN = 3
 
 FPS = 20
 # colors
@@ -106,7 +107,8 @@ class State():
 
         if last_pos:
             self._state[last_pos] = EMPTY
-        self._state[new_pos] = SNAKE
+        self._state[new_pos] = HEAD
+        self._state[self._pos_head] = SNAKE
         self._pos_head = new_pos
         return last_pos
 
@@ -199,7 +201,10 @@ class PlaySnake():
         obs.append(
             int(self.state._pos_head[1] - self.state._coin[1] > 0))  # right
 
-        return obs
+        # return obs
+        s = self.state._state.reshape((ROWS, COLUMNS, 1)).astype(np.float32)
+        s = s / np.max(s)
+        return s
 
     def get_reward(self):
         reward = 0
@@ -258,7 +263,7 @@ class PlaySnake():
         for row in range(0, ROWS):
             for column in range(0, COLUMNS):
                 color = BACKGROUND_COLOR
-                if self.state._state[row][column] == SNAKE:
+                if self.state._state[row][column] == SNAKE or self.state._state[row][column] == HEAD:
                     color = SNAKE_COLOR
                 elif self.state._state[row][column] == COIN:
                     color = COIN_COLOR

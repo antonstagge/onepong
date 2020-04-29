@@ -17,7 +17,8 @@ class Network:
                  learning_rate=0.001, momentum=0.95,
                  saveName="Weights",
                  target=False,
-                 load=False):
+                 load=False,
+                 ** kwargs):
         """ Constructor """
         self.learning_rate = learning_rate
         self.momentum = momentum

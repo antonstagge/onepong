@@ -78,7 +78,9 @@ def training_iteration(
         acc_rews = [1] * NUMBER_OF_PLAYS  # 1 to count points not reward
 
         while not all(dones) and iters < MAX_GAME_ITER:
-            observations = np.zeros((NUMBER_OF_PLAYS, neural_net.nin))
+            s_t = timer()
+            observations = np.zeros(
+                np.append([NUMBER_OF_PLAYS], neural_net.nin))
 
             for i in range(NUMBER_OF_PLAYS):
                 if not dones[i]:
@@ -114,7 +116,7 @@ def training_iteration(
             if any([len(m) < BATCH_SIZE for m in memories]):
                 continue
 
-            states_full = np.empty((0, neural_net.nin))
+            states_full = np.empty(np.append([0], neural_net.nin))
             targets_full = np.empty((0, neural_net.nout))
             # train on each game seperately
             for i in range(NUMBER_OF_PLAYS):
@@ -163,7 +165,8 @@ def training_iteration(
 
             # Actually train the live network
             neural_net.train(states_full, targets_full, BATCH_SIZE)
-            sys.stdout.write('Game iteration count %d\r' % iters)
+            sys.stdout.write(
+                'Game iteration count %d - time: %.3f\r' % (iters, timer() - s_t))
             dones = dones_prel
 
         # update epsilons

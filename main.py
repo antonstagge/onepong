@@ -22,6 +22,7 @@ NETWORK_SYNC_FREQ = 100
 MAX_POINTS = 100
 
 HIDDEN = 10
+CONV = True
 
 TR_SPEED = 0.001
 DISCOUND_FACTOR = 0.95
@@ -54,6 +55,8 @@ if GAME == 'onepong':
     N_OUT = 3
 elif GAME == 'snake':
     N_IN = 12
+    if CONV:
+        N_IN = [30, 30, 1]
     N_OUT = 4
 
 
@@ -118,15 +121,15 @@ def main():
         sure = input('Are you sure? (y/n):\n')
         if sure == 'y':
             network(N_IN, HIDDEN, N_OUT, learning_rate=TR_SPEED, load=False,
-                    saveName=SAVE_NAME).saveWeights()
+                    saveName=SAVE_NAME, conv=CONV).saveWeights()
             network(N_IN, HIDDEN, N_OUT, learning_rate=TR_SPEED, load=False,
-                    saveName=SAVE_NAME, target=True).saveWeights()
+                    saveName=SAVE_NAME, conv=CONV, target=True).saveWeights()
         return
     elif train:
         # Initialising networks
-        neural_net = network(
-            load=True, learning_rate=TR_SPEED, saveName=SAVE_NAME)
-        target_net = network(load=True, learning_rate=TR_SPEED,
+        neural_net = network(conv=CONV,
+                             load=True, learning_rate=TR_SPEED, saveName=SAVE_NAME)
+        target_net = network(conv=CONV, load=True, learning_rate=TR_SPEED,
                              saveName=SAVE_NAME, target=True)
         DQN.training_iteration(neural_net, target_net,
                                OUTER_ITER, NUMBER_OF_PLAYS,
@@ -154,16 +157,17 @@ def ai_play(swap_network, SAVE_NAME):
     if swap_network:
         print("Swapped")
     neural_net = network(
-        N_IN, HIDDEN, N_OUT, load=True, saveName=(SAVE_NAME), target=swap_network)
+        N_IN, HIDDEN, N_OUT, load=True, saveName=(SAVE_NAME), target=swap_network, conv=CONV)
     # player False and draw True
     game = games[GAME]['initialize'](player=False, draw=True)
     done = False
     grow = True
     while not done:
         obs = game.get_observation()
-        print(obs)
         action = DQN.act(neural_net, obs, training=False)
-        print("Action choosen:", action)
+        if not CONV:
+            print(obs)
+            print("Action choosen:", action)
         #draw_neural_net.draw(game.screen, grow, obs, neural_net.hidden[0], neural_net.outputs[0])
         grow = False
         done = game.play_one_iteration(action)
