@@ -114,6 +114,7 @@ def training_iteration(
             iters += 1
 
             if any([len(m) < BATCH_SIZE for m in memories]):
+                dones = dones_prel
                 continue
 
             states_full = np.empty(np.append([0], neural_net.nin))
@@ -126,7 +127,8 @@ def training_iteration(
 
                 memory = memories[i]
                 # REPLAY
-                replay_rewards = devalue_rewards(memory, DISCOUND_FACTOR*0.8)
+                #replay_rewards = devalue_rewards(memory, DISCOUND_FACTOR*0.8)
+                replay_rewards = [m[2] for m in memory]
                 # use a small batch of training data to train on
                 choice = np.random.choice(len(memory), BATCH_SIZE)
                 #batch = random.sample(memory, min(len(memory), BATCH_SIZE))
@@ -168,6 +170,9 @@ def training_iteration(
             sys.stdout.write(
                 'Game iteration count %d - time: %.3f\r' % (iters, timer() - s_t))
             dones = dones_prel
+
+        if any([len(m) < BATCH_SIZE for m in memories]):
+            continue
 
         # update epsilons
         if neural_net.epsilon > EPSILON_MIN:

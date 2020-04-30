@@ -1,8 +1,8 @@
 from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import Dense, Conv2D, Input, Flatten, LeakyReLU
+from tensorflow.keras.layers import Dense, Conv2D, Input, Flatten, LeakyReLU, Activation
 from tensorflow.keras.optimizers import Adam, RMSprop, SGD
 from tensorflow.keras import backend as K
-from tensorflow.keras.losses import mean_squared_error
+from tensorflow.keras.losses import mean_squared_error, Huber
 import numpy as np
 import os
 
@@ -59,24 +59,26 @@ class KerasNetwork:
 
             if self.conv:
                 self._model.add(Input(shape=(self.nin[0], self.nin[1], 1,)))
-                self._model.add(Conv2D(32, 6, strides=3))
-                self._model.add(LeakyReLU())
-                self._model.add(Conv2D(64, 3, strides=2))
-                self._model.add(LeakyReLU())
-                self._model.add(Conv2D(64, 2, strides=1))
-                self._model.add(LeakyReLU())
+                self._model.add(Conv2D(16, 8, strides=4))
+                self._model.add(Activation('relu'))
+                self._model.add(Conv2D(32, 2, strides=2))
+                self._model.add(Activation('relu'))
+                # self._model.add(Conv2D(64, 2, strides=1))
+                # self._model.add(relu())
                 self._model.add(Flatten())
             else:
                 self._model.add(Input(shape=(self.nin)))
 
             self._model.add(
-                Dense(self.nhidden, activation='sigmoid'))
+                Dense(self.nhidden, activation=None))
             self._model.add(Dense(self.nout, activation=None))
 
             #opt = RMSprop(learning_rate=self.learning_rate)
             #opt = SGD(learning_rate=self.learning_rate, momentum=self.momentum)
             opt = Adam(learning_rate=self.learning_rate)
-            self._model.compile(optimizer=opt, loss='mse')
+            #loss = Huber()
+            loss = 'mse'
+            self._model.compile(optimizer=opt, loss=loss)
 
     def train(self, inputs, targets, batch_size):
         self._model.fit(inputs, targets, epochs=self.epochs,

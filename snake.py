@@ -6,8 +6,8 @@ import numpy as np
 import random
 
 # CONSTANTS
-ROWS = 30
-COLUMNS = 30
+ROWS = 20
+COLUMNS = 20
 
 EMPTY = 0
 SNAKE = 1
@@ -47,8 +47,12 @@ class State():
         self._pos_head = (int(ROWS/2), int(COLUMNS/2))
         self._state[self._pos_head[0]][self._pos_head[1]] = SNAKE
         self._pos_body = []
-        self.set_coin_pos()
-        self._dir = random.choice(movements)
+
+        # self.set_coin_pos()
+        self._coin = (int(ROWS/4), int(COLUMNS/2))
+        self._state[self._coin[0]][self._coin[1]] = COIN
+
+        self._dir = 'L'  # random.choice(movements)
         self.points = 0
         self._life = 50
 
@@ -60,7 +64,7 @@ class State():
 
             if self._pos_head == self._coin:
                 self.points += 1
-                self._life += 100
+                self._life += 50
                 # if self.points % 2:
                 # make snake longer
                 self._pos_body.insert(0, last_spot)

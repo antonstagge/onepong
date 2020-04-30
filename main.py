@@ -17,20 +17,17 @@ from collections import deque
 network = keras_nn.KerasNetwork
 
 OUTER_ITER = 1000
-NUMBER_OF_PLAYS = 50
-NETWORK_SYNC_FREQ = 100
+NUMBER_OF_PLAYS = 100
+NETWORK_SYNC_FREQ = 50
 MAX_POINTS = 100
-
-HIDDEN = 10
-CONV = True
 
 TR_SPEED = 0.001
 DISCOUND_FACTOR = 0.95
 
-EPSILON_MIN = 0.01
+EPSILON_MIN = 0.1
 EPSILON_DECAY = 0.95
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 games = {
     'onepong': {
@@ -49,14 +46,18 @@ games = {
 
 #GAME = 'onepong'
 GAME = 'snake'
+CONV = True
 
 if GAME == 'onepong':
     N_IN = 5
     N_OUT = 3
+    HIDDEN = 10
 elif GAME == 'snake':
+    HIDDEN = 10
     N_IN = 12
     if CONV:
-        N_IN = [30, 30, 1]
+        N_IN = [20, 20, 1]
+        HIDDEN = 100
     N_OUT = 4
 
 
@@ -159,21 +160,22 @@ def ai_play(swap_network, SAVE_NAME):
     neural_net = network(
         N_IN, HIDDEN, N_OUT, load=True, saveName=(SAVE_NAME), target=swap_network, conv=CONV)
     # player False and draw True
-    game = games[GAME]['initialize'](player=False, draw=True)
-    done = False
-    grow = True
-    while not done:
-        obs = game.get_observation()
-        action = DQN.act(neural_net, obs, training=False)
-        if not CONV:
-            print(obs)
-            print("Action choosen:", action)
-        #draw_neural_net.draw(game.screen, grow, obs, neural_net.hidden[0], neural_net.outputs[0])
-        grow = False
-        done = game.play_one_iteration(action)
-    print(" GAME OVER!!\nAI scored %d points" % game.state.points)
-    while True:
-        pass
+    for i in range(10):
+        game = games[GAME]['initialize'](player=False, draw=True)
+        done = False
+        grow = True
+        while not done:
+            obs = game.get_observation()
+            action = DQN.act(neural_net, obs, training=False)
+            if not CONV:
+                print(obs)
+                print("Action choosen:", action)
+            #draw_neural_net.draw(game.screen, grow, obs, neural_net.hidden[0], neural_net.outputs[0])
+            grow = False
+            done = game.play_one_iteration(action)
+        print(" GAME OVER!!\nAI scored %d points" % game.state.points)
+    # while True:
+    #     pass
 
 
 if __name__ == "__main__":
